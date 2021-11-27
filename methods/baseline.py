@@ -1,3 +1,13 @@
+######################################################################################
+# Code from: https://github.com/layumi/Person_reID_baseline_pytorch
+# @article{zheng2019joint,
+#   title={Joint discriminative and generative learning for person re-identification},
+#   author={Zheng, Zhedong and Yang, Xiaodong and Yu, Zhiding and Zheng, and others},
+#   journal={IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+#   year={2019}
+# }
+######################################################################################
+
 from typing import Any, Dict, List, Union
 
 import torch
@@ -306,8 +316,11 @@ class Client(ClientModule):
             device=self.device
         )
 
+        avg_representation = torch.cat([query_output['features'], gallery_output['features']], dim=0)
+        avg_representation = torch.sum(avg_representation, dim=0) / len(avg_representation)
+
         self.logger.info_validation(task_name, query_size, gallery_size, cmc, mAP)
-        return cmc, mAP
+        return cmc, mAP, avg_representation
 
 
 class Server(ServerModule):

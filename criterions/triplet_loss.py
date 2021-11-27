@@ -10,8 +10,9 @@ from tools.distance import compute_cosine_distance, compute_euclidean_distance
 
 class TripletLoss(object):
     """Modified from Tong Xiao's open-reid (https://github.com/Cysu/open-reid).
-    Related Triplet Loss theory can be found in paper 'In Defense of the Triplet
-    Loss for Person Re-Identification'."""
+    Reference:
+    Alexander Hermans et al. In Defense of the Triplet Loss for Person Re-Identification.
+    """
 
     def __init__(self, margin=None, norm_feat=False, hard_mining=False):
         self.margin = margin

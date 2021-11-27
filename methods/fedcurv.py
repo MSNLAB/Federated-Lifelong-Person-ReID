@@ -1,3 +1,12 @@
+#############################################################################################
+# @article{shoham2019overcoming,
+#   title={Overcoming forgetting in federated learning on non-iid data},
+#   author={Shoham, Neta and Avidor, Tomer and Keren, Aviv and Israel, Nadav, and others},
+#   journal={arXiv preprint arXiv:1910.07796},
+#   year={2019}
+# }
+#############################################################################################
+
 from typing import Any, Dict, Union, Optional, List
 
 import torch
@@ -562,8 +571,11 @@ class Client(ClientModule):
             device=self.device
         )
 
+        avg_representation = torch.cat([query_output['features'], gallery_output['features']], dim=0)
+        avg_representation = torch.sum(avg_representation, dim=0) / len(avg_representation)
+
         self.logger.info_validation(task_name, query_size, gallery_size, cmc, mAP)
-        return cmc, mAP
+        return cmc, mAP, avg_representation
 
 
 class Server(ServerModule):

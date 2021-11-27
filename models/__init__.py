@@ -4,7 +4,7 @@ import torch
 
 from models.resnet import ResNet_ReID
 
-model_list = {
+net_list = {
     'resnet': ResNet_ReID,
 }
 
@@ -18,19 +18,19 @@ scheduler_list = {
 }
 
 
-def get_callable_model(model_name: str) -> Callable:
-    if model_name.lower() not in model_list.keys():
-        raise ValueError(f"Could not find the model named '{model_name}'.")
-    return model_list[model_name.lower()]
+def get_net_constructor(net_name: str) -> Callable:
+    if net_name.lower() not in net_list.keys():
+        raise ValueError(f"Could not find the model net named '{net_name}'.")
+    return net_list[net_name.lower()]
 
 
-def get_callable_optimizer(optimizer_name: str) -> Callable:
+def get_optimizer_constructor(optimizer_name: str) -> Callable:
     if optimizer_name.lower() not in optimizer_list.keys():
         raise ValueError(f"Could not find the optimizer named '{optimizer_name}'.")
     return optimizer_list[optimizer_name.lower()]
 
 
-def get_callable_scheduler(scheduler_name: str) -> Callable:
+def get_scheduler_constructor(scheduler_name: str) -> Callable:
     if scheduler_name.lower() not in scheduler_list.keys():
         raise ValueError(f"Could not find the scheduler named '{scheduler_name}'.")
     return scheduler_list[scheduler_name.lower()]

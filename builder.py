@@ -4,16 +4,16 @@ from typing import Dict, Callable, Tuple, Any, List
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from criterions import get_callable_criterion
+from criterions import get_criterion_constructor
 from datasets.datasets_pipeline import ReIDTaskPipeline
 from methods import generate_server, generate_operator, generate_client, generate_model
-from models import get_callable_model, get_callable_optimizer, get_callable_scheduler
+from models import get_net_constructor, get_optimizer_constructor, get_scheduler_constructor
 from modules.client import ClientModule
 from modules.server import ServerModule
 
 
 def parser_model(method_name: str, model_config: Dict, device: str) -> nn.Module:
-    net_constructor = get_callable_model(model_config['name'])
+    net_constructor = get_net_constructor(model_config['name'])
     factory_kwargs = model_config['arguments'] if 'arguments' in model_config.keys() else {}
     net = net_constructor(**factory_kwargs)
     return generate_model(method_name, net, device, **factory_kwargs)
@@ -24,14 +24,14 @@ def parser_criterion(criterion_configs: Any) -> List[Tuple[Callable, Dict]]:
         criterion_configs = [criterion_configs]
     criterions = []
     for criterion_config in criterion_configs:
-        callable_criterion = get_callable_criterion(criterion_config['name'])
+        callable_criterion = get_criterion_constructor(criterion_config['name'])
         factory_kwargs = criterion_config['arguments'] if 'arguments' in criterion_config.keys() else {}
         criterions.append(callable_criterion(**factory_kwargs))
     return criterions
 
 
 def parser_optimizer(model: nn.Module, optim_config: Dict) -> Optimizer:
-    optimizer = get_callable_optimizer(optim_config['name'])
+    optimizer = get_optimizer_constructor(optim_config['name'])
     factory_kwargs = optim_config['arguments'] if 'arguments' in optim_config.keys() else {}
 
     if not optim_config['fine_tuning']:
@@ -44,7 +44,7 @@ def parser_optimizer(model: nn.Module, optim_config: Dict) -> Optimizer:
 
 
 def parser_scheduler(optim: Optimizer, scheduler_config: Dict) -> Optimizer:
-    scheduler = get_callable_scheduler(scheduler_config['name'])
+    scheduler = get_scheduler_constructor(scheduler_config['name'])
     factory_kwargs = scheduler_config['arguments'] if 'arguments' in scheduler_config.keys() else {}
     return scheduler(optimizer=optim, **factory_kwargs)
 

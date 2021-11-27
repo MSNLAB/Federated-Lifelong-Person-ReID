@@ -26,7 +26,6 @@ class DecomposedLayer(nn.Module):
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
             lambda_l1: float = None,
-            lambda_atten: float = None,
             **kwargs
     ):
         super(DecomposedLayer, self).__init__()
@@ -55,28 +54,19 @@ class DecomposedLayer(nn.Module):
             lambda_l1 = 1e-3
         self.lambda_l1 = lambda_l1
 
-        if lambda_atten is None:
-            lambda_atten = 0.0
-        self.lambda_atten = lambda_atten
-
     @staticmethod
     def l1_pruning(weights: torch.Tensor, hyper_parameters: torch.Tensor):
         hard_threshold = torch.greater(torch.abs(weights), hyper_parameters).float()
         return weights * hard_threshold
 
     def forward(self, data: torch.Tensor) -> Any:
-        adaptive_weight = self.adaptive_weight
-        adaptive_bias = self.adaptive_bias
-        global_weight = self.global_weight
-        global_weight_atten = self.global_weight_atten
-
         # if self.training:
         #     adaptive_weight = self.l1_pruning(self.adaptive_weight, self.lambda_l1)
         #     adaptive_bias = self.l1_pruning(self.adaptive_bias, self.lambda_l1) if adaptive_bias else None
         #     global_weight_atten = self.l1_pruning(self.global_weight_atten, self.lambda_atten)
 
-        theta = global_weight_atten * global_weight + adaptive_weight
-        bias = adaptive_bias
+        theta = self.global_weight_atten * self.global_weight + self.adaptive_weight
+        bias = self.adaptive_bias
 
         return F.linear(
             input=data,
@@ -94,7 +84,6 @@ class DecomposedConv2D(DecomposedLayer):
             adaptive_bias: torch.Tensor = None,
             global_weight_atten: torch.Tensor = None,
             lambda_l1: float = None,
-            lambda_atten: float = None,
             stride: int = 1,
             padding: int = 0,
             **kwargs
@@ -105,25 +94,19 @@ class DecomposedConv2D(DecomposedLayer):
             adaptive_bias,
             global_weight_atten,
             lambda_l1,
-            lambda_atten,
             **kwargs
         )
         self.stride = stride
         self.padding = padding
 
     def forward(self, data: torch.Tensor) -> Any:
-        adaptive_weight = self.adaptive_weight
-        adaptive_bias = self.adaptive_bias
-        global_weight = self.global_weight
-        global_weight_atten = self.global_weight_atten
-
         # if self.training:
         #     adaptive_weight = self.l1_pruning(self.adaptive_weight, self.lambda_l1)
         #     adaptive_bias = self.l1_pruning(self.adaptive_bias, self.lambda_l1) if adaptive_bias else None
         #     global_weight_atten = self.l1_pruning(self.global_weight_atten, self.lambda_atten)
 
-        theta = global_weight_atten * global_weight + adaptive_weight
-        bias = adaptive_bias
+        theta = self.global_weight_atten * self.global_weight + self.adaptive_weight
+        bias = self.adaptive_bias
 
         return F.conv2d(
             input=data,
@@ -142,10 +125,8 @@ class Model(nn.Module):
             self,
             net: Union[nn.Sequential, nn.Module],
             lambda_l1: float = 1e-3,
-            lambda_l2: float = 1e2,
             lambda_kd_1: float = 0.0,
             lambda_kd_2: float = 0.0,
-            lambda_atten: float = 1e-3,
             device: str = None,
             **kwargs
     ) -> None:
@@ -154,10 +135,8 @@ class Model(nn.Module):
         self.device = torch_device(device)
         self.net = net
         self.lambda_l1 = lambda_l1
-        self.lambda_l2 = lambda_l2
         self.lambda_kd_1 = lambda_kd_1
         self.lambda_kd_2 = lambda_kd_2
-        self.lambda_atten = lambda_atten
         self.args = kwargs
 
         self.layer_convert()
@@ -190,7 +169,6 @@ class Model(nn.Module):
                     global_weight=module.weight,
                     adaptive_bias=module.bias,
                     lambda_l1=self.lambda_l1,
-                    lambda_atten=self.lambda_atten,
                     stride=module.stride,
                     padding=module.padding,
                 )
@@ -344,39 +322,7 @@ class Model(nn.Module):
 
 class Operator(OperatorModule):
 
-    def set_optimizer_train_classifier(self, model: Model):
-        optimizer_param_factory = {
-            n: p for n, p in self.optimizer.param_groups[0].items() if n != 'params'
-        }
-
-        params = []
-
-        for name, param in model.net.classifier.named_parameters():
-            if param.requires_grad:
-                params.append(param)
-
-        self.optimizer.param_groups = [{
-            'params': params,
-            **optimizer_param_factory
-        }]
-
-    def set_optimizer_train_backbone(self, model: Model):
-        optimizer_param_factory = {
-            n: p for n, p in self.optimizer.param_groups[0].items() if n != 'params'
-        }
-
-        params = []
-
-        for name, param in model.net.base.named_parameters():
-            if param.requires_grad:
-                params.append(param)
-
-        self.optimizer.param_groups = [{
-            'params': params,
-            **optimizer_param_factory
-        }]
-
-    def set_optimizer_train_all(self, model: Model):
+    def set_optimizer_params(self, model: Model):
         optimizer_param_factory = {
             n: p for n, p in self.optimizer.param_groups[0].items() if n != 'params'
         }
@@ -401,7 +347,7 @@ class Operator(OperatorModule):
         batch_cnt = data_cnt = 0
 
         model.train()
-        self.set_optimizer_train_all(model)
+        self.set_optimizer_params(model)
 
         for data, person_id, classes_id in self.iter_dataloader(dataloader):
             data, target = data.to(self.device), classes_id.to(self.device)
@@ -442,14 +388,25 @@ class Operator(OperatorModule):
         kd_loss = DistillKL(2.0)
 
         model.train()
-        self.set_optimizer_train_all(model)
+        self.set_optimizer_params(model)
 
         for data, person_id, classes_id in self.iter_dataloader(dataloader):
             data, target = data.to(self.device), classes_id.to(self.device)
             self.optimizer.zero_grad()
             stu_output = self._invoke_train(model, data, target, **kwargs)
             score, feature, loss = stu_output['score'], stu_output['feature'], stu_output['loss']
+
             y_student = F.normalize(feature)
+
+            # knowledge from pre-model
+            if pre_model:
+                pre_model.train()
+                with model_on_device(pre_model, self.device):
+                    with torch.no_grad():
+                        tea_output = self._invoke_predict(pre_model, data, target, **kwargs)
+                    t_score, t_feature = tea_output['score'], tea_output['feature']
+                    loss += kd_loss(y_student, F.normalize(t_feature.clone().detach())) \
+                            * model.lambda_kd_1
 
             # knowledge from relevant models
             y_teacher = torch.zeros_like(y_student)
@@ -468,17 +425,7 @@ class Operator(OperatorModule):
                 # y_teacher += (torch.randn(y_teacher.shape) >> 10).to(y_teacher.device)  # add noise
                 loss += kd_loss(y_student, y_teacher) * model.lambda_kd_2
 
-            # knowledge from pre-model
-            if pre_model:
-                pre_model.train()
-                with model_on_device(pre_model, self.device):
-                    with torch.no_grad():
-                        tea_output = self._invoke_predict(pre_model, data, target, **kwargs)
-                    t_score, t_feature = tea_output['score'], tea_output['feature']
-                    loss += kd_loss(y_student, F.normalize(t_feature.clone().detach())) \
-                            * model.lambda_kd_1
-
-            # l1 to sparse the adaptive weight
+            # l1 loss to make adaptive weight sparse
             d_layers = model.decomposed_module_leaves()
             sparseness = 0.0
             for name, module in d_layers:
@@ -808,6 +755,7 @@ class Client(ClientModule):
                     data_count, perf_acc, perf_loss,
                     epoch, epochs
                 )
+
         self.current_convergence = accuracy
 
         # Reset learning rate
@@ -893,8 +841,11 @@ class Client(ClientModule):
             device=self.device
         )
 
+        avg_representation = torch.cat([query_output['features'], gallery_output['features']], dim=0)
+        avg_representation = torch.sum(avg_representation, dim=0) / len(avg_representation)
+
         self.logger.info_validation(task_name, query_size, gallery_size, cmc, mAP)
-        return cmc, mAP
+        return cmc, mAP, avg_representation
 
 
 class Server(ServerModule):

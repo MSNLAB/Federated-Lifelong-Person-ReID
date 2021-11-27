@@ -9,7 +9,7 @@ criterion_list = {
 }
 
 
-def get_callable_criterion(criterion_name: str) -> Callable:
+def get_criterion_constructor(criterion_name: str) -> Callable:
     if criterion_name.lower() not in criterion_list.keys():
         raise ValueError(f"Could not find the criterion named '{criterion_name}'.")
     return criterion_list[criterion_name.lower()]

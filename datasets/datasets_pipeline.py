@@ -2,7 +2,7 @@ from typing import List
 
 from torch.utils.data import DataLoader
 
-from datasets import get_callable_augmentation
+from datasets import get_augmentation_constructor
 from datasets.datasets_loader import ReIDImageDataset
 
 
@@ -13,7 +13,6 @@ class ReIDTaskPipeline(object):
         self.current_task_idx = -1
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        self.gallery_loaders = [None for _ in range(len(task_list))]
         self.task_round_rest = [task['sustained_round'] for task in task_list]
 
     def reach_final_task(self) -> bool:
@@ -28,12 +27,12 @@ class ReIDTaskPipeline(object):
         norm_std = task["norm_std"]
         epochs = task['epochs']
         batch_size = task['batch_size']
-        augmentation = get_callable_augmentation(task['augmentation'])(
+        augmentation = get_augmentation_constructor(task['augmentation'])(
             size=img_size,
             mean=norm_mean,
             std=norm_std
         )
-        none_augmentation = get_callable_augmentation('none')(
+        none_augmentation = get_augmentation_constructor('none')(
             size=img_size,
             mean=norm_mean,
             std=norm_std
@@ -61,14 +60,12 @@ class ReIDTaskPipeline(object):
             pin_memory=self.pin_memory
         )
 
-        self.gallery_loaders[idx] = gallery_loader
-
         return {
             "task_name": task_name,
             "epochs": epochs,
             "tr_loader": tr_loader,
             "query_loader": query_loader,
-            "gallery_loaders": gallery_loader  # self.gallery_loaders[:self.current_task_idx + 1]
+            "gallery_loaders": gallery_loader
         }
 
     def current_task(self) -> DataLoader:

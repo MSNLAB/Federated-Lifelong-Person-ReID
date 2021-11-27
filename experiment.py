@@ -5,8 +5,10 @@ import random
 from typing import Dict, Tuple, Union, Any
 
 import torch
+from torch.utils.data import DataLoader
 
 from builder import parser_server, parser_client
+from datasets.datasets_loader import ReIDImageDataset
 from tools.utils import same_seeds
 
 
@@ -64,6 +66,13 @@ class ExperimentStage(object):
             for comm in range(1, int(job_config['comm_rounds']) + 1):
                 self._performance_one_comm(comm, server, clients, job_config)
 
+            # Performance on single dataset
+            duke_path = '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-duke'
+            market_path = '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-market'
+
+            self._performance_on_duke(int(job_config['comm_rounds']), server, clients, duke_path)
+            self._performance_on_market2011(int(job_config['comm_rounds']), server, clients, market_path)
+
             # Save the record
             format_time = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             log_save_path = os.path.join(
@@ -96,31 +105,16 @@ class ExperimentStage(object):
             self._empty_cuda_cache()
             task_pipeline = client.args['task_pipeline']
             task = task_pipeline.next_task()
-            tr_output = client.train(
-                task['epochs'],
-                task['task_name'],
-                task['tr_loader'],
-                task['query_loader']
-            )
-            self.record[f"{client.client_name}"][f"{comm_round}"][f"{task['task_name']}"] = {
-                "tr_acc": tr_output['accuracy'],
-                "tr_loss": tr_output['loss'],
-            }
-
-            if comm_round % val_intervals == 0:
-                cmc, mAP = client.validate(
+            if task['epochs'] != 0:
+                tr_output = client.train(
+                    task['epochs'],
                     task['task_name'],
-                    task['query_loader'],
-                    task['gallery_loaders']
+                    task['tr_loader'],
+                    task['query_loader']
                 )
                 self.record[f"{client.client_name}"][f"{comm_round}"][f"{task['task_name']}"] = {
                     "tr_acc": tr_output['accuracy'],
                     "tr_loss": tr_output['loss'],
-                    "val_rank_1": cmc[0],
-                    "val_rank_3": cmc[2],
-                    "val_rank_5": cmc[4],
-                    "val_rank_10": cmc[9],
-                    "val_map": mAP,
                 }
 
         # Simulate validation for each client
@@ -130,10 +124,9 @@ class ExperimentStage(object):
                 task_pipeline = client.args['task_pipeline']
 
                 # validate all tasks
-                # for tid in range(task_pipeline.current_task_idx):
                 for tid in range(len(task_pipeline.task_list)):
                     task = task_pipeline.get_task(tid)
-                    cmc, mAP = client.validate(
+                    cmc, mAP, avg_representation = client.validate(
                         task['task_name'],
                         task['query_loader'],
                         task['gallery_loaders']
@@ -144,6 +137,7 @@ class ExperimentStage(object):
                         "val_rank_5": cmc[4],
                         "val_rank_10": cmc[9],
                         "val_map": mAP,
+                        'val_avg_representation': avg_representation,
                     }
 
         # Communication with server
@@ -155,5 +149,60 @@ class ExperimentStage(object):
 
         server.calculate()
 
-    def _performance_on_duke(self, server, clients, dataset_root: str):
-        pass
+    def _performance_on_duke(self, comm_round, server, clients, duke_extractor_path: str):
+        for client in clients:
+            self._empty_cuda_cache()
+
+            gallery_loader = DataLoader(
+                ReIDImageDataset([f'{duke_extractor_path}/gallery']),
+                batch_size=64,
+                shuffle=False,
+                num_workers=8,
+            )
+            query_loader = DataLoader(
+                ReIDImageDataset([f'{duke_extractor_path}/query']),
+                batch_size=64,
+                shuffle=False,
+                num_workers=8,
+            )
+
+            # validate all tasks, result in loggers
+            cmc, mAP, avg_representation = client.validate('duke', query_loader, gallery_loader)
+            self.record[f"{client.client_name}"][f"{comm_round}"] = {}
+            self.record[f"{client.client_name}"][f"{comm_round}"]["duke-msmt"] = {
+                "val_rank_1": cmc[0],
+                "val_rank_3": cmc[2],
+                "val_rank_5": cmc[4],
+                "val_rank_10": cmc[9],
+                "val_map": mAP,
+                'val_avg_representation': avg_representation.tolist(),
+            }
+
+    def _performance_on_market2011(self, comm_round, server, clients, market2011_extractor_path: str):
+        for client in clients:
+            self._empty_cuda_cache()
+
+            gallery_loader = DataLoader(
+                ReIDImageDataset([f'{market2011_extractor_path}/gallery']),
+                batch_size=64,
+                shuffle=False,
+                num_workers=8,
+            )
+            query_loader = DataLoader(
+                ReIDImageDataset([f'{market2011_extractor_path}/query']),
+                batch_size=64,
+                shuffle=False,
+                num_workers=8,
+            )
+
+            # validate all tasks, result in loggers
+            cmc, mAP, avg_representation = client.validate('market2011', query_loader, gallery_loader)
+            self.record[f"{client.client_name}"][f"{comm_round}"] = {}
+            self.record[f"{client.client_name}"][f"{comm_round}"]["market2011"] = {
+                "val_rank_1": cmc[0],
+                "val_rank_3": cmc[2],
+                "val_rank_5": cmc[4],
+                "val_rank_10": cmc[9],
+                "val_map": mAP,
+                'val_avg_representation': avg_representation.tolist(),
+            }

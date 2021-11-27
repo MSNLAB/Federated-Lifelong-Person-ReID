@@ -19,7 +19,7 @@ method_list = {
 }
 
 
-def get_callable_method(method_name: str) -> Any:
+def get_method_constructor(method_name: str) -> Any:
     if method_name not in method_list.keys():
         raise ValueError(f"Could not find the method named '{method_name}'.")
     return method_list[method_name]
@@ -32,7 +32,7 @@ def generate_operator(
         scheduler: _LRScheduler = None,
         device: str = None
 ) -> OperatorModule:
-    method = get_callable_method(method_name)
+    method = get_method_constructor(method_name)
     if hasattr(method, 'Operator'):
         return method.Operator(
             optimizer=optimizer,
@@ -49,7 +49,7 @@ def generate_model(
         device: str = None,
         **kwargs
 ) -> nn.Module:
-    method = get_callable_method(method_name)
+    method = get_method_constructor(method_name)
     if hasattr(method, 'Model'):
         return method.Model(net=net, device=device, **kwargs)
     return net
@@ -64,7 +64,7 @@ def generate_client(
         model_ckpt_name: str = None,
         **kwargs
 ) -> ClientModule:
-    method = get_callable_method(method_name)
+    method = get_method_constructor(method_name)
     if hasattr(method, 'Client'):
         return method.Client(
             client_name=client_name,
@@ -85,7 +85,7 @@ def generate_server(
         ckpt_root: str,
         **kwargs
 ) -> ClientModule:
-    method = get_callable_method(method_name)
+    method = get_method_constructor(method_name)
     if hasattr(method, 'Server'):
         return method.Server(
             server_name=server_name,

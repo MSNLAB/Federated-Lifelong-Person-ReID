@@ -1,3 +1,15 @@
+###################################################################################################
+# Code from: https://github.com/wyjeong/FedWeIT
+# @inproceedings{yoon2021federated,
+#   title={Federated continual learning with weighted inter-client transfer},
+#   author={Yoon, Jaehong and Jeong, Wonyong and Lee, Giwoong and Yang, Eunho and Hwang, Sung Ju},
+#   booktitle={International Conference on Machine Learning},
+#   pages={12073--12086},
+#   year={2021},
+#   organization={PMLR}
+# }
+###################################################################################################
+
 import copy
 from queue import Queue
 from typing import Any, Dict, Union, List, Optional
@@ -601,11 +613,7 @@ class Client(ClientModule):
             for name, layer in incremental_decomposed_layers
         }
         incremental_global_weights = {
-            f'{name}.sw': (
-                    layer.mask * layer.sw
-                # layer.mask * layer.sw + layer.aw +
-                # torch.sum(layer.atten * layer.aw_kb, dim=-1, keepdim=False)
-            ).clone().detach() \
+            f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
             for name, layer in incremental_decomposed_layers
         }
 
@@ -622,11 +630,7 @@ class Client(ClientModule):
             for name, layer in integrated_decomposed_layers
         }
         integrated_global_weights = {
-            f'{name}.sw': (
-                    layer.mask * layer.sw
-                # layer.mask * layer.sw + layer.aw +
-                # torch.sum(layer.atten * layer.aw_kb, dim=-1, keepdim=False)
-            ).clone().detach() \
+            f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
             for name, layer in integrated_decomposed_layers
         }
 
@@ -764,8 +768,11 @@ class Client(ClientModule):
             device=self.device
         )
 
+        avg_representation = torch.cat([query_output['features'], gallery_output['features']], dim=0)
+        avg_representation = torch.sum(avg_representation, dim=0) / len(avg_representation)
+
         self.logger.info_validation(task_name, query_size, gallery_size, cmc, mAP)
-        return cmc, mAP
+        return cmc, mAP, avg_representation
 
 
 class Server(ServerModule):

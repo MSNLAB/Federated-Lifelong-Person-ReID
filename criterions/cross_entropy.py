@@ -1,6 +1,7 @@
 ###################################################
 # Code from: https://github.com/JDAI-CV/fast-reid/
 ###################################################
+
 import torch
 import torch.nn as nn
 
@@ -28,7 +29,9 @@ class CrossEntropyLabelSmooth(nn.Module):
             target: ground truth labels with shape (num_classes)
         """
         log_probs = self.logsoftmax(score)
-        target = torch.zeros(log_probs.size()).scatter_(1, target.unsqueeze(1).data.cpu(), 1).to(log_probs.device)
+        target = torch.zeros(log_probs.size()) \
+            .scatter_(1, target.unsqueeze(1).data.cpu(), 1) \
+            .to(log_probs.device)
         target = (1 - self.epsilon) * target + self.epsilon / self.num_classes
         loss = (- target * log_probs).mean(0).sum()
         return loss

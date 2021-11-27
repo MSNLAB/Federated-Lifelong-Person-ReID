@@ -8,10 +8,9 @@ import torch.nn.functional as F
 
 def compute_euclidean_distance(features, others):
     m, n = features.size(0), others.size(0)
-    dist_m = (
-            torch.pow(features, 2).sum(dim=1, keepdim=True).expand(m, n)
-            + torch.pow(others, 2).sum(dim=1, keepdim=True).expand(n, m).t()
-    )
+    dist_m = torch.pow(features, 2).sum(dim=1, keepdim=True).expand(m, n) \
+             + torch.pow(others, 2).sum(dim=1, keepdim=True).expand(n, m).t()
+
     dist_m.addmm_(beta=1, alpha=-2, mat1=features, mat2=others.t())
 
     return dist_m

@@ -1,23 +1,21 @@
 {
   "name": "ours-sm",
   "method": "ours",
-  "comm_rounds": 40,
-  "val_intervals": 5,
+  "comm_rounds": 80,
+  "val_intervals": 10,
   "comm_online_clients": 5,
   "server": {
     "name": "server",
     "model": {
       "name": "resnet",
       "arguments": {
-        "model_name": "resnet18",
+        "model_name": "resnet50",
         "num_classes": 2000,
         "last_stride": 1,
         "neck": "bnneck",
-        "lambda_l1": 1e-5,
-        "lambda_l2": 1e2,
-        "lambda_kd_1": 1e3,
-        "lambda_kd_2": 1e4,
-        "lambda_mask": 1e-3
+        "lambda_l1": 1e-6,
+        "lambda_kd_1": 1e4,
+        "lambda_kd_2": 1e5
       }
     },
     "criterion": [
@@ -56,14 +54,13 @@
       "model": {
         "name": "resnet",
         "arguments": {
-          "model_name": "resnet18",
+          "model_name": "resnet50",
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
-          "lambda_l2": 1e2,
-          "lambda_kd_1": 1e3,
-          "lambda_kd_2": 1e4,
+          "lambda_l1": 1e-6,
+          "lambda_kd_1": 1e4,
+          "lambda_kd_2": 1e5,
           "lambda_mask": 1e-3
         }
       },
@@ -104,7 +101,7 @@
           "task_name": "task-0",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -126,7 +123,7 @@
           "task_name": "task-1",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -148,7 +145,7 @@
           "task_name": "task-2",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -170,7 +167,7 @@
           "task_name": "task-3",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -192,7 +189,7 @@
           "task_name": "task-4",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -214,7 +211,7 @@
           "task_name": "task-5",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -236,7 +233,7 @@
           "task_name": "task-6",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -258,7 +255,7 @@
           "task_name": "task-7",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -283,14 +280,13 @@
       "model": {
         "name": "resnet",
         "arguments": {
-          "model_name": "resnet18",
+          "model_name": "resnet50",
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
-          "lambda_l2": 1e2,
-          "lambda_kd_1": 1e3,
-          "lambda_kd_2": 1e4,
+          "lambda_l1": 1e-6,
+          "lambda_kd_1": 1e4,
+          "lambda_kd_2": 1e5,
           "lambda_mask": 1e-3
         }
       },
@@ -331,7 +327,7 @@
           "task_name": "task-0",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -353,7 +349,7 @@
           "task_name": "task-1",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -375,7 +371,7 @@
           "task_name": "task-2",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -397,7 +393,7 @@
           "task_name": "task-3",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -419,7 +415,7 @@
           "task_name": "task-4",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -441,7 +437,7 @@
           "task_name": "task-5",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -463,7 +459,7 @@
           "task_name": "task-6",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -485,7 +481,7 @@
           "task_name": "task-7",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -510,14 +506,13 @@
       "model": {
         "name": "resnet",
         "arguments": {
-          "model_name": "resnet18",
+          "model_name": "resnet50",
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
-          "lambda_l2": 1e2,
-          "lambda_kd_1": 1e3,
-          "lambda_kd_2": 1e4,
+          "lambda_l1": 1e-6,
+          "lambda_kd_1": 1e4,
+          "lambda_kd_2": 1e5,
           "lambda_mask": 1e-3
         }
       },
@@ -558,7 +553,7 @@
           "task_name": "task-0",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -580,7 +575,7 @@
           "task_name": "task-1",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -602,7 +597,7 @@
           "task_name": "task-2",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -624,7 +619,7 @@
           "task_name": "task-3",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -646,7 +641,7 @@
           "task_name": "task-4",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -668,7 +663,7 @@
           "task_name": "task-5",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -690,7 +685,7 @@
           "task_name": "task-6",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -712,7 +707,7 @@
           "task_name": "task-7",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -737,14 +732,13 @@
       "model": {
         "name": "resnet",
         "arguments": {
-          "model_name": "resnet18",
+          "model_name": "resnet50",
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
-          "lambda_l2": 1e2,
-          "lambda_kd_1": 1e3,
-          "lambda_kd_2": 1e4,
+          "lambda_l1": 1e-6,
+          "lambda_kd_1": 1e4,
+          "lambda_kd_2": 1e5,
           "lambda_mask": 1e-3
         }
       },
@@ -785,7 +779,7 @@
           "task_name": "task-0",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -807,7 +801,7 @@
           "task_name": "task-1",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -829,7 +823,7 @@
           "task_name": "task-2",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -851,7 +845,7 @@
           "task_name": "task-3",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -873,7 +867,7 @@
           "task_name": "task-4",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -895,7 +889,7 @@
           "task_name": "task-5",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -917,7 +911,7 @@
           "task_name": "task-6",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -939,7 +933,7 @@
           "task_name": "task-7",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -964,14 +958,13 @@
       "model": {
         "name": "resnet",
         "arguments": {
-          "model_name": "resnet18",
+          "model_name": "resnet50",
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
-          "lambda_l2": 1e2,
-          "lambda_kd_1": 1e3,
-          "lambda_kd_2": 1e4,
+          "lambda_l1": 1e-6,
+          "lambda_kd_1": 1e4,
+          "lambda_kd_2": 1e5,
           "lambda_mask": 1e-3
         }
       },
@@ -1012,7 +1005,7 @@
           "task_name": "task-0",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1034,7 +1027,7 @@
           "task_name": "task-1",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1056,7 +1049,7 @@
           "task_name": "task-2",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1078,7 +1071,7 @@
           "task_name": "task-3",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1100,7 +1093,7 @@
           "task_name": "task-4",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1122,7 +1115,7 @@
           "task_name": "task-5",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1144,7 +1137,7 @@
           "task_name": "task-6",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42
@@ -1166,7 +1159,7 @@
           "task_name": "task-7",
           "epochs": 5,
           "batch_size": 64,
-          "sustained_round": 5,
+          "sustained_round": 10,
           "img_size": [
             128,
             42

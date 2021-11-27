@@ -1,9 +1,16 @@
+#######################################################
+# Code from: https://github.com/HobbitLong/RepDistiller
+#######################################################
+
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class DistillKL(nn.Module):
-    """Distilling the Knowledge in a Neural Network"""
+    """Distilling the Knowledge in a Neural Network.
+    Reference:
+    <https://en.wikipedia.org/wiki/Kullback-Leibler_divergence>
+    """
 
     def __init__(self, temperature: int = 1.0):
         super(DistillKL, self).__init__()
