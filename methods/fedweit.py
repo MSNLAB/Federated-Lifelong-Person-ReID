@@ -11,6 +11,7 @@
 ###################################################################################################
 
 import copy
+import random
 from queue import Queue
 from typing import Any, Dict, Union, List, Optional
 
@@ -803,10 +804,10 @@ class Server(ServerModule):
                 merge_increment_params[n] += p.clone().detach()
 
         # calculate knowledge base
+        self.client_aw = []  # delete this code if need shuffle adaptive weight as paper mentioned
         self.client_aw.extend([params['increment_aw'] for _, params in self.clients.items()])
         if len(self.client_aw) >= self.model.kb_cnt:
-            # client_adaptive_weights = random.sample(self.client_aw, self.model.kb_cnt)
-            client_adaptive_weights = self.client_aw[-1 * self.model.kb_cnt:]
+            client_adaptive_weights = random.sample(self.client_aw, self.model.kb_cnt)
             for name, _ in client_adaptive_weights[0].items():
                 merge_increment_params[f'{name}_kb'] = torch.cat(
                     tensors=[aw[name].reshape(list(aw[name].shape) + [1]) \
