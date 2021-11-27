@@ -56,8 +56,8 @@ You can easily modify the hyper-parameters as you need and implement a new metho
 
 ```
 |-- configs
-	|-- common.json           `enviroment configurations such as device`
-	|-- experiment_xxx.json   `experiment configurations such as hyper-params`	
+    |-- common.json           `enviroment configurations such as device`
+    |-- experiment_xxx.json   `experiment configurations such as hyper-params`	
 |-- criterions
     |-- xxx.py                `loss functions`
 |-- datasets
