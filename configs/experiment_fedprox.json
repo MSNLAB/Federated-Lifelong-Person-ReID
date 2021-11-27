@@ -94,7 +94,7 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -116,7 +116,7 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -138,7 +138,7 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -160,7 +160,7 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -182,7 +182,7 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -204,7 +204,7 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -226,7 +226,7 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -248,7 +248,7 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -316,7 +316,7 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -338,7 +338,7 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -360,7 +360,7 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -382,7 +382,7 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -404,7 +404,7 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -426,7 +426,7 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -448,7 +448,7 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -470,7 +470,7 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -538,7 +538,7 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -560,7 +560,7 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -582,7 +582,7 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -604,7 +604,7 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -626,7 +626,7 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -648,7 +648,7 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -670,7 +670,7 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -692,7 +692,7 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -760,7 +760,7 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -782,7 +782,7 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -804,7 +804,7 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -826,7 +826,7 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -848,7 +848,7 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -870,7 +870,7 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -892,7 +892,7 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -914,7 +914,7 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -982,7 +982,7 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1004,7 +1004,7 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1026,7 +1026,7 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1048,7 +1048,7 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1070,7 +1070,7 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1092,7 +1092,7 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1114,7 +1114,7 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,
@@ -1136,7 +1136,7 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 64,
+          "batch_size": 128,
           "sustained_round": 10,
           "img_size": [
             128,

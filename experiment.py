@@ -155,20 +155,17 @@ class ExperimentStage(object):
 
             gallery_loader = DataLoader(
                 ReIDImageDataset([f'{duke_extractor_path}/gallery']),
-                batch_size=64,
-                shuffle=False,
-                num_workers=8,
+                batch_size=128,
+                # num_workers=8,
             )
             query_loader = DataLoader(
                 ReIDImageDataset([f'{duke_extractor_path}/query']),
-                batch_size=64,
-                shuffle=False,
-                num_workers=8,
+                batch_size=128,
+                # num_workers=8,
             )
 
-            # validate all tasks, result in loggers
+            # validate for duke-msmt-reid
             cmc, mAP, avg_representation = client.validate('duke', query_loader, gallery_loader)
-            self.record[f"{client.client_name}"][f"{comm_round}"] = {}
             self.record[f"{client.client_name}"][f"{comm_round}"]["duke-msmt"] = {
                 "val_rank_1": cmc[0],
                 "val_rank_3": cmc[2],
@@ -184,20 +181,17 @@ class ExperimentStage(object):
 
             gallery_loader = DataLoader(
                 ReIDImageDataset([f'{market2011_extractor_path}/gallery']),
-                batch_size=64,
-                shuffle=False,
-                num_workers=8,
+                batch_size=128,
+                # num_workers=8,
             )
             query_loader = DataLoader(
-                ReIDImageDataset([f'{market2011_extractor_path}/query']),
-                batch_size=64,
-                shuffle=False,
-                num_workers=8,
+                dataset=ReIDImageDataset([f'{market2011_extractor_path}/query']),
+                batch_size=128,
+                # num_workers=8,
             )
 
-            # validate all tasks, result in loggers
+            # validate for market2011
             cmc, mAP, avg_representation = client.validate('market2011', query_loader, gallery_loader)
-            self.record[f"{client.client_name}"][f"{comm_round}"] = {}
             self.record[f"{client.client_name}"][f"{comm_round}"]["market2011"] = {
                 "val_rank_1": cmc[0],
                 "val_rank_3": cmc[2],
