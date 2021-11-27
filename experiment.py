@@ -137,7 +137,7 @@ class ExperimentStage(object):
                         "val_rank_5": cmc[4],
                         "val_rank_10": cmc[9],
                         "val_map": mAP,
-                        'val_avg_representation': avg_representation,
+                        'val_avg_representation': avg_representation.tolist(),
                     }
 
         # Communication with server

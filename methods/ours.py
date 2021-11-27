@@ -630,46 +630,27 @@ class Client(ClientModule):
         self.save_state(model_name, model_dict, True)
 
     def get_incremental_state(self, **kwargs) -> Dict:
-        incremental_decomposed_layers = self.model.decomposed_module_leaves()
-
         model_params = {
             n: p.clone().detach() \
             for n, p in self.model.net.state_dict().items()
         }
 
-        incremental_shared_weights = {
-            f'{name}.global_weight': layer.global_weight_atten * layer.global_weight \
-                                     + layer.adaptive_weight \
-            for name, layer in incremental_decomposed_layers \
-            if layer.global_weight_atten is not None
-        }
-
         return {
             'train_cnt': self.train_cnt,
             'model_convergence': self.current_convergence,
-            'model_params': model_params,
-            'incremental_shared_weight': incremental_shared_weights,
+            'model_params': model_params
         }
 
     def get_integrated_state(self, **kwargs) -> Dict:
-        integrated_decomposed_layers = self.model.decomposed_module_leaves()
-
         model_params = {
             n: p.clone().detach() \
             for n, p in self.model.net.state_dict().items()
-        }
-
-        integrated_shared_weights = {
-            f'{name}.global_weight': layer.global_weight_atten * layer.global_weight \
-                                     + layer.adaptive_weight
-            for name, layer in integrated_decomposed_layers
         }
 
         return {
             'train_cnt': self.train_cnt,
             'model_convergence': self.current_convergence,
             'model_params': model_params,
-            'integrated_shared_weight': integrated_shared_weights,
         }
 
     def update_by_incremental_state(self, state: Dict, **kwargs) -> Any:
@@ -874,29 +855,34 @@ class Server(ServerModule):
 
     def calculate(self) -> Any:
         merge_increment_params = {}
-
         train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
 
         for i, (cid, client) in enumerate(self.clients.items()):
-            k, global_weight = client['train_cnt'], client['model_params']
-            global_weight = {
-                n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
-                for n, p in global_weight.items() \
-                if 'bn' in n or 'bottleneck' in n or 'downsample' in n
-            }
-            for n, p in global_weight.items():
-                if n not in merge_increment_params.keys():
-                    merge_increment_params[n] = torch.zeros_like(p)
-                merge_increment_params[n] += p.clone().detach()
+            if client is not None:
+                k, params = client['train_cnt'], client['model_params']
+                global_params = {}
+                for n, p in params.items():
+                    # summarize knowledge from batchnorm params
+                    if 'bn' in n or 'bottleneck' in n or 'downsample' in n:
+                        global_params[n] = (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype)
 
-        for i, (cid, client) in enumerate(self.clients.items()):
-            k, global_weight = client['train_cnt'], client['incremental_shared_weight']
-            global_weight = {n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
-                             for n, p in global_weight.items()}
-            for n, p in global_weight.items():
-                if n not in merge_increment_params.keys():
-                    merge_increment_params[n] = torch.zeros_like(p)
-                merge_increment_params[n] += p.clone().detach()
+                    # summarize knowledge from adaptive params
+                    if 'adaptive_weight' in n:
+                        module_name, modules = '', n.split('.')
+                        for idx in range(len(modules) - 1):
+                            module_name = module_name + modules[idx] + '.'
+
+                        global_weight = params[module_name + 'global_weight']
+                        global_weight_atten = params[module_name + 'global_weight_atten']
+                        adaptive_weight = params[module_name + 'adaptive_weight']
+
+                        global_params[n] = ((global_weight_atten * global_weight + adaptive_weight)
+                                            * k / train_total_cnt).type(dtype=p.dtype)
+
+                for n, p in global_params.items():
+                    if n not in merge_increment_params.keys():
+                        merge_increment_params[n] = torch.zeros_like(p)
+                    merge_increment_params[n] += p.clone().detach()
 
         model_dict = self.model.net.state_dict()
         for i, (n, p) in enumerate(merge_increment_params.items()):
