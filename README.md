@@ -45,7 +45,7 @@ $ python3 Awesome-ReID-for-FCL/main.py \
 ```shell
 $ nohup python3 main.py --experiments \
                        ./configs/experiment_ours_sm.json \
-				       ./configs/experiment_ours_mm.json \
+                       ./configs/experiment_ours_mm.json \
                        > task.log 2>&1 &
 $ tail -f task.log
 ```
