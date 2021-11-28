@@ -40,13 +40,13 @@ $ python3 Awesome-ReID-for-FCL/main.py \
 }
 ```
 
-4. Startup the default experiments in `./configs/experiments_XXX.json`
+4. Startup the default experiments in `./configs/experiments_###.json`
 
 ```shell
 $ nohup python3 main.py --experiments \
-				./configs/experiment_ours_sm.json \
-				./configs/experiment_ours_mm.json \
-				> task.log 2>&1 &
+                       ./configs/experiment_ours_sm.json \
+				       ./configs/experiment_ours_mm.json \
+                       > task.log 2>&1 &
 $ tail -f task.log
 ```
 
@@ -56,37 +56,92 @@ You can easily modify the hyper-parameters as you need and implement a new metho
 
 ```
 |-- configs
-    |-- common.json           `enviroment configurations such as device`
-    |-- experiment_xxx.json   `experiment configurations such as hyper-params`	
+    |-- common.json               `enviroment configurations such as device`
+    |-- experiment_###.json       `experiment configurations such as hyper-params`	
 |-- criterions
-    |-- xxx.py                `loss functions`
+    |-- xxx.py                    `loss functions`
 |-- datasets
-    |-- datasets_loader.py    `the dataset class for reading sources`
-    |-- datasets_pipeline.py  `the pipeline class for simulating tasks stream`
-    |-- image_augmentation.py `image augmentation methods`
+    |-- datasets_loader.py        `the dataset class for reading sources`
+    |-- datasets_pipeline.py      `the pipeline class for simulating tasks stream`
+    |-- image_augmentation.py     `image augmentation methods`
 |-- methods
-    |-- xxx.py                `the most important algorithm structure`
+    |-- ###.py                    `the most important algorithm structure`
 |-- models
-    |-- resnet.py             `resnet that meet re-identification requirments`
+    |-- resnet.py                 `resnet that meet re-identification requirments`
 |-- modules
-    |-- client.py             `define the client functions that methods must be done`
-    |-- server.py             `define the server functions that methods must be done`
-    |-- operator.py           `define the other functions that methods must be done`
+    |-- client.py                 `define the client functions that methods must be done`
+    |-- server.py                 `define the server functions that methods must be done`
+    |-- operator.py               `define the other functions that methods must be done`
 |-- tools
-    |-- distance.py           `the method to calculate similarity of representations`
-    |-- evaluate.py           `the method to calculate rank-K and mAP`
-    |-- logger.py             `the method to print logs`
-    |-- winit.py              `the method to init the model parameters`
-    |-- utils.py              `the other utils functions for recalling`
-|-- main.py                   `reading configs from command parameters`
-|-- builder.py                `construct the classes by configuration`
-|-- experiment.py             `experiment stage for all methods`
-|-- analysis.py               `analysis the experiment results`
+    |-- distance.py               `the method to calculate similarity of representations`
+    |-- evaluate.py               `the method to calculate rank-K and mAP`
+    |-- logger.py                 `the method to print logs`
+    |-- winit.py                  `the method to init the model parameters`
+    |-- utils.py                  `other utils and functions for calling`
+|-- main.py                       `reading configuration from command parameters`
+|-- builder.py                    `construct the classes by configuration`
+|-- experiment.py                 `experiment stage for all methods`
+|-- analysis.py                   `analysis the experiment results`
 ```
 
 1. Design manual experiments
 
-   > Supplementing...
+   If you need modify or add manual experiment, please create a new json file in `./configs/experiment_{NAME}.json`.
+
+   The format is as follows:
+
+   ```json
+   {
+       "name": "your experiment name [string]",
+       "method": "methods such as 'ewc', 'fedavg', 'fedcurv' [string]",
+       "comm_rounds": "the communication rounds [integer]",
+       "comm_online_clients": "random choose some client online each round [integer]",
+       "val_intervals": "validate the Rank-K and mAP with some interval [integer]",
+       "server": {
+           "name": "server name [string]",
+           "model": {
+               "name": "model network structure such as 'resnet' [string]",
+               "arguments": "model arguments [map]"
+           },
+           "criterion": [{
+                "name": "loss function name",
+                "arguments": "loss function arguments [map]"
+           }],
+           "optimizer": {
+               "name": "optimizer name such as Adam [string]",
+               "arguments": "loss function arguments [map]",
+               "fine_tuning": "fine tuning flag [boolean]",
+               "fine_tuning_layers": "module that need to train [list]"
+           },
+           "scheduler": {
+               "name": "learning rate scheduler name such as step_lr",
+               "arguments": "lr scheduler function arguments [map]"
+           }
+       },
+       "clients": [
+           {
+               "name": "client name [string]",
+               "model": "same as server format [map]",
+               "criterion": "same as server format [map]",
+               "optimizer": "same as server format [map]",
+               "scheduler": "same as server format [map]",
+               "workers": "dataloader workers number [integer]",
+               "pin_memory": "dataloader pin memory [boolean]",
+               "tasks": [{
+                   "task_name": "your task name",
+                   "epochs": "training epochs each round [integer]",
+                   "batch_size": "batch size [integer]",
+                   "sustain_round": "the duration of this task for epoch [integer]",
+                   "img_size": [ 128, 64 ],
+                   "norm_mean": [ 0.485, 0.456, 0.406 ],
+                   "norm_std": [ 0.229, 0.224, 0.225 ],
+                   "datasets": "dataset name , exist in common.json -> 'datasets_base' [string]",
+                   "augmentation": "level of : 'none', 'defualt', 'rose', 'sharp', 'drastic' [string]"
+                }]
+           }
+       ]
+   }
+   ```
 
 2. Design manual methods
 
