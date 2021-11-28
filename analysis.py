@@ -202,7 +202,7 @@ def plot_compared_methods(
             l_id = l_id + 1 if l_id + 1 < len(line_style) else 0
             m_id = m_id + 1 if m_id + 1 < len(marker) else 0
 
-        # plt.ylim(y_lim)
+        plt.ylim(y_lim)
         plt.legend(loc="best")
         plt.title(client_name)
         plt.xlabel("Communication Round")
@@ -213,11 +213,11 @@ def plot_compared_methods(
 
 if __name__ == '__main__':
     plot_learning_curve(
-        log_path="./logs/2021-11-23/ours-sm_2021-11-25-07-47-24.log",
-        save_path="./logs/2021-11-23/ours-sm_2021-11-25-07-47-24_mAP.png",
+        log_path="./logs/2021-11-30/fedcurv_2021-11-28-19-06-30.log",
+        save_path="./logs/2021-11-30/fedcurv_2021-11-28-19-06-30_mAP.png",
         metric_name="val_map",
         metric_desc="mAP",
-        y_lim=[0, 80]
+        y_lim=[0, 90]
         # clients=['client-0', 'client-1', 'client-2', 'client-3', 'client-4', ],
         # rounds=[10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
         # tasks=['task-0', 'task-3', 'task-5']
@@ -234,21 +234,21 @@ if __name__ == '__main__':
     # )
     plot_compared_methods(
         job_log_paths={
-            # 'single-model': './logs/2021-11-23/sm_2021-11-23-22-51-28.log',
+            'single-model': './logs/2021-11-30/sm_2021-11-28-00-00-17.log',
             # 'multi-model': './logs/2021-11-23/mm_2021-11-24-00-46-27.log',
             # 'ewc': './logs/2021-11-23/ewc_2021-11-23-23-39-29.log',
             # 'mas': './logs/2021-11-23/mas_2021-11-24-02-08-41.log',
             # 'fedavg': './logs/2021-11-23/fedavg_2021-11-24-02-28-05.log',
             # 'fedprox': './logs/2021-11-23/fedprox_2021-11-24-03-53-11.log',
-            'fedcurv': './logs/2021-11-23/fedcurv_2021-11-24-01-27-13.log',
-            'fedweit': './logs/2021-11-23/fedweit_2021-11-24-00-55-58.log',
-            'ours-m': './logs/2021-11-23/ours-mm_2021-11-25-07-45-49.log',
-            'ours-s': './logs/2021-11-23/ours-sm_2021-11-25-07-47-24.log'
+            'fedcurv': './logs/2021-11-30/fedcurv_2021-11-28-19-06-30.log',
+            'fedweit': './logs/2021-11-30/fedweit_2021-11-28-06-14-57.log',
+            'ours-m': './logs/2021-11-30/ours-mm_2021-11-28-19-01-34.log',
+            'ours-s': './logs/2021-11-30/ours-sm_2021-11-28-19-00-38.log'
         },
-        save_path='./logs/2021-11-23/total.png',
+        save_path='./logs/2021-11-30/total.png',
         metric_name='val_map',
         metric_desc='average mAP',
         clients=['client-0', 'client-1', 'client-2', 'client-3', 'client-4', ],
-        rounds=[5, 10, 15, 20, 25, 30, 35, 40],
-        y_lim=(0, 80)
+        rounds=[10, 20, 30, 40, 50, 60, 70, 80],
+        y_lim=(35, 75)
     )

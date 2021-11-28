@@ -54,13 +54,14 @@ class DecomposedLayer(nn.Module):
             self.bias.requires_grad = True
 
         if mask is None:
-            mask = torch.zeros(self.sw.shape[-1])
+            mask = torch.ones(self.sw.shape[-1])
             mask = torch.sigmoid(mask)
         self.mask = Parameter(mask)
         self.mask.requires_grad = True
 
         if adaptive is None:
             adaptive = self.sw.clone().detach()
+            adaptive = (1 - mask.data) * adaptive
         self.aw = Parameter(adaptive)
         self.aw.requires_grad = True
 
@@ -91,8 +92,8 @@ class DecomposedLayer(nn.Module):
         return weights * hard_threshold
 
     def forward(self, data: torch.Tensor) -> Any:
-        aw = self.aw if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
-        mask = self.mask if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
         theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
         bias = self.bias
         return F.linear(
@@ -125,8 +126,8 @@ class DecomposedConv2D(DecomposedLayer):
         self.padding = padding
 
     def forward(self, data: torch.Tensor) -> Any:
-        aw = self.aw if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
-        mask = self.mask if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
         theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
         bias = self.bias
         return F.conv2d(

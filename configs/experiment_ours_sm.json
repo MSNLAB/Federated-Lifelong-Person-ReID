@@ -13,9 +13,9 @@
         "num_classes": 2000,
         "last_stride": 1,
         "neck": "bnneck",
-        "lambda_l1": 1e-6,
-        "lambda_kd_1": 1e4,
-        "lambda_kd_2": 1e5
+        "lambda_l1": 1e-5,
+        "lambda_kd_1": 1e3,
+        "lambda_kd_2": 1e3
       }
     },
     "criterion": [
@@ -58,10 +58,9 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_kd_1": 1e4,
-          "lambda_kd_2": 1e5,
-          "lambda_mask": 1e-3
+          "lambda_l1": 1e-5,
+          "lambda_kd_1": 1e3,
+          "lambda_kd_2": 1e3
         }
       },
       "criterion": [
@@ -284,10 +283,9 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_kd_1": 1e4,
-          "lambda_kd_2": 1e5,
-          "lambda_mask": 1e-3
+          "lambda_l1": 1e-5,
+          "lambda_kd_1": 1e3,
+          "lambda_kd_2": 1e3
         }
       },
       "criterion": [
@@ -510,10 +508,9 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_kd_1": 1e4,
-          "lambda_kd_2": 1e5,
-          "lambda_mask": 1e-3
+          "lambda_l1": 1e-5,
+          "lambda_kd_1": 1e3,
+          "lambda_kd_2": 1e3
         }
       },
       "criterion": [
@@ -736,10 +733,9 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_kd_1": 1e4,
-          "lambda_kd_2": 1e5,
-          "lambda_mask": 1e-3
+          "lambda_l1": 1e-5,
+          "lambda_kd_1": 1e3,
+          "lambda_kd_2": 1e3
         }
       },
       "criterion": [
@@ -962,10 +958,9 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_kd_1": 1e4,
-          "lambda_kd_2": 1e5,
-          "lambda_mask": 1e-3
+          "lambda_l1": 1e-5,
+          "lambda_kd_1": 1e3,
+          "lambda_kd_2": 1e3
         }
       },
       "criterion": [
