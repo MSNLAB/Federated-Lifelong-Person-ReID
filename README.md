@@ -1,7 +1,5 @@
 # Federated Continual Learning in Person Re-identification
 
-# Abstract
-
 > Supplementing...
 
 # Quick Start
