@@ -1,10 +1,10 @@
 # Federated Continual Learning in Person Re-identification
 
-## Abstract
+# Abstract
 
 > Supplementing...
 
-## Quick Start
+# Quick Start
 
 1. Install dependencies from `requirements.txt` after creating your own environment with `python >= 3.8.0`
 
@@ -50,7 +50,7 @@ $ python3 main.py --experiments \
                   ./configs/experiment_ours_mm.json
 ```
 
-## Manual Experiment
+# Manual Experiment
 
 You can easily modify the hyper-parameters as you need and implement a new method. Before this, we would like to introduce the general structure of this project and help you revise the experiment.
 
@@ -146,3 +146,20 @@ You can easily modify the hyper-parameters as you need and implement a new metho
 2. Design manual methods
 
    > Supplementing...
+
+# Contributing
+
+Pull requests are more than welcome! If you have any questions please feel free to contact us.
+
+E-mail:  
+
+# License
+
+Copyright 2021, MSNLAB, NUST SCE
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
