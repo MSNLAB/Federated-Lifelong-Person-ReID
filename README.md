@@ -12,7 +12,7 @@
 $ pip3 install -r requirements.txt
 ```
 
-2. Prepare person re-identification datasets for federated continual learning as [Awesome-ReID-for-FCL](https://github.com/MSNLAB/Awesome-ReID-for-FCL)
+2. Prepare person re-identification datasets for federated continual learning as [Awesome-ReID-for-FCL](https://github.com/MSNLAB/Awesome-ReID-for-FCL).  
 
 ```shell
 $ git clone https://github.com/MSNLAB/Awesome-ReID-for-FCL.git
@@ -27,6 +27,8 @@ $ python3 Awesome-ReID-for-FCL/main.py \
         --task_indice 5 8 \
         --random_seed 123
 ```
+
+*[Note] Alternatively, you can download our preprocessed open dataset for simple test, the site will be announced soon.* 
 
 3. Configure environment in `./configs/common.json` 
 
@@ -43,11 +45,9 @@ $ python3 Awesome-ReID-for-FCL/main.py \
 4. Startup the default experiments in `./configs/experiments_###.json`
 
 ```shell
-$ nohup python3 main.py --experiments \
-                       ./configs/experiment_ours_sm.json \
-                       ./configs/experiment_ours_mm.json \
-                       > task.log 2>&1 &
-$ tail -f task.log
+$ python3 main.py --experiments \
+                  ./configs/experiment_ours_sm.json \
+                  ./configs/experiment_ours_mm.json
 ```
 
 ## Manual Experiment
