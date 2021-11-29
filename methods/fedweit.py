@@ -55,6 +55,7 @@ class DecomposedLayer(nn.Module):
 
         if mask is None:
             mask = torch.zeros(self.sw.shape[-1])
+            mask = torch.sigmoid(mask)
         self.mask = Parameter(mask)
         self.mask.requires_grad = True
 
