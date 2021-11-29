@@ -72,7 +72,7 @@ class DecomposedLayer(nn.Module):
         self.aw_kb.requires_grad = False
 
         if atten is None:
-            atten = torch.ones([kb_cnt])
+            atten = torch.zeros([kb_cnt])
             atten = torch.sigmoid(atten)
         self.atten = Parameter(atten)
         self.atten.requires_grad = True

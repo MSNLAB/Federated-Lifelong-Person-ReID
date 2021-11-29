@@ -13,8 +13,8 @@
         "num_classes": 2000,
         "last_stride": 1,
         "neck": "bnneck",
-        "lambda_l1": 1e-8,
-        "lambda_l2": 1e1,
+        "lambda_l1": 1e-9,
+        "lambda_l2": 1.0,
         "lambda_mask": 0.0,
         "kb_cnt": 5
       }
@@ -59,8 +59,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-8,
-          "lambda_l2": 1e1,
+          "lambda_l1": 1e-9,
+          "lambda_l2": 1.0,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -284,8 +284,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-8,
-          "lambda_l2": 1e1,
+          "lambda_l1": 1e-9,
+          "lambda_l2": 1.0,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -509,8 +509,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-8,
-          "lambda_l2": 1e1,
+          "lambda_l1": 1e-9,
+          "lambda_l2": 1.0,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -734,8 +734,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-8,
-          "lambda_l2": 1e1,
+          "lambda_l1": 1e-9,
+          "lambda_l2": 1.0,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -959,8 +959,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-8,
-          "lambda_l2": 1e1,
+          "lambda_l1": 1e-9,
+          "lambda_l2": 1.0,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }

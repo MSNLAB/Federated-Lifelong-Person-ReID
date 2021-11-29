@@ -13,7 +13,7 @@
         "num_classes": 2000,
         "last_stride": 1,
         "neck": "bnneck",
-        "lambda_l1": 1e-5,
+        "lambda_l1": 1e-6,
         "lambda_kd_1": 1e3,
         "lambda_kd_2": 1e3
       }
@@ -58,7 +58,7 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
+          "lambda_l1": 1e-6,
           "lambda_kd_1": 1e3,
           "lambda_kd_2": 1e3
         }
@@ -283,7 +283,7 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
+          "lambda_l1": 1e-6,
           "lambda_kd_1": 1e3,
           "lambda_kd_2": 1e3
         }
@@ -508,7 +508,7 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
+          "lambda_l1": 1e-6,
           "lambda_kd_1": 1e3,
           "lambda_kd_2": 1e3
         }
@@ -733,7 +733,7 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
+          "lambda_l1": 1e-6,
           "lambda_kd_1": 1e3,
           "lambda_kd_2": 1e3
         }
@@ -958,7 +958,7 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-5,
+          "lambda_l1": 1e-6,
           "lambda_kd_1": 1e3,
           "lambda_kd_2": 1e3
         }
