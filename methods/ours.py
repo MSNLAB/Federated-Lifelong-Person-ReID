@@ -38,6 +38,9 @@ class DecomposedLayer(nn.Module):
             self.adaptive_bias = Parameter(tensor_reverse_permute(adaptive_bias))
             self.adaptive_bias.requires_grad = True
 
+        self.global_weight_atten = None
+        self.adaptive_weight = None
+
         self.init_training_weights(global_weight_atten, adaptive_weight)
 
         if lambda_l1 is None:
