@@ -13,8 +13,8 @@
         "num_classes": 2000,
         "last_stride": 1,
         "neck": "bnneck",
-        "lambda_l1": 1e-6,
-        "lambda_l2": 10.0,
+        "lambda_l1": 1e-8,
+        "lambda_l2": 1e-1,
         "lambda_mask": 0.0,
         "kb_cnt": 5
       }
@@ -59,8 +59,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_l2": 10.0,
+          "lambda_l1": 1e-8,
+          "lambda_l2": 1e-1,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -100,11 +100,11 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -122,11 +122,11 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -144,11 +144,11 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -166,11 +166,11 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -188,11 +188,11 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -210,11 +210,11 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -232,11 +232,11 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -254,11 +254,11 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -284,8 +284,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_l2": 10.0,
+          "lambda_l1": 1e-8,
+          "lambda_l2": 1e-1,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -325,11 +325,11 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -347,11 +347,11 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -369,11 +369,11 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -391,11 +391,11 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -413,11 +413,11 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -435,11 +435,11 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -457,11 +457,11 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -479,11 +479,11 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -509,8 +509,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_l2": 10.0,
+          "lambda_l1": 1e-8,
+          "lambda_l2": 1e-1,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -550,11 +550,11 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -572,11 +572,11 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -594,11 +594,11 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -616,11 +616,11 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -638,11 +638,11 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -660,11 +660,11 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -682,11 +682,11 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -704,11 +704,11 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -734,8 +734,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_l2": 10.0,
+          "lambda_l1": 1e-8,
+          "lambda_l2": 1e-1,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -775,11 +775,11 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -797,11 +797,11 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -819,11 +819,11 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -841,11 +841,11 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -863,11 +863,11 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -885,11 +885,11 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -907,11 +907,11 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -929,11 +929,11 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -959,8 +959,8 @@
           "num_classes": 2000,
           "last_stride": 1,
           "neck": "bnneck",
-          "lambda_l1": 1e-6,
-          "lambda_l2": 10.0,
+          "lambda_l1": 1e-8,
+          "lambda_l2": 1e-1,
           "lambda_mask": 0.0,
           "kb_cnt": 5
         }
@@ -1000,11 +1000,11 @@
         {
           "task_name": "task-0",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1022,11 +1022,11 @@
         {
           "task_name": "task-1",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1044,11 +1044,11 @@
         {
           "task_name": "task-2",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1066,11 +1066,11 @@
         {
           "task_name": "task-3",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1088,11 +1088,11 @@
         {
           "task_name": "task-4",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1110,11 +1110,11 @@
         {
           "task_name": "task-5",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1132,11 +1132,11 @@
         {
           "task_name": "task-6",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
@@ -1154,11 +1154,11 @@
         {
           "task_name": "task-7",
           "epochs": 5,
-          "batch_size": 128,
+          "batch_size": 64,
           "sustained_round": 10,
           "img_size": [
             128,
-            42
+            64
           ],
           "norm_mean": [
             0.485,
