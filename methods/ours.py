@@ -127,6 +127,7 @@ class Model(nn.Module):
             lambda_l1: float = 1e-3,
             lambda_kd_1: float = 0.0,
             lambda_kd_2: float = 0.0,
+            rep_kd_cnt: int = 3,
             device: str = None,
             **kwargs
     ) -> None:
@@ -137,6 +138,7 @@ class Model(nn.Module):
         self.lambda_l1 = lambda_l1
         self.lambda_kd_1 = lambda_kd_1
         self.lambda_kd_2 = lambda_kd_2
+        self.rep_kd_cnt = rep_kd_cnt
         self.args = kwargs
 
         self.layer_convert()
@@ -411,7 +413,7 @@ class Operator(OperatorModule):
             # knowledge from relevant models
             y_teacher = torch.zeros_like(y_student)
             y_teacher_count = 0
-            for kd_model in kd_models:
+            for kd_model in kd_models[:model.rep_kd_cnt + 1]:
                 kd_model.train()
                 with model_on_device(kd_model, self.device):
                     with torch.no_grad():
@@ -672,6 +674,8 @@ class Client(ClientModule):
 
         for idx, relevant_model_convergence in enumerate(state['relevant_model_convergence']):
             self.kd_models[idx].lambda_kd_2 *= relevant_model_convergence
+
+        self.kd_models = sorted(self.kd_models, key=lambda m: m.lambda_kd_2, reverse=True)
 
         if self.current_task:
             if self.model_ckpt_name:

@@ -368,11 +368,7 @@ class Operator(OperatorModule):
         }
 
         params = {}
-        for name, param in model.net.base.named_parameters():
-            if param.requires_grad:
-                params[name] = param
-
-        for name, param in model.net.classifier.named_parameters():
+        for name, param in model.net.named_parameters():
             if param.requires_grad:
                 params[name] = param
 
@@ -790,10 +786,7 @@ class Server(ServerModule):
         self.client_aw = []
 
     def calculate(self) -> Any:
-        merge_increment_params = {
-            n: torch.zeros_like(p) \
-            for n, p in self.model.net.state_dict().items()
-        }
+        merge_increment_params = {}
 
         # calculate global weight
         train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
@@ -802,6 +795,8 @@ class Server(ServerModule):
             global_weight = {n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
                              for n, p in global_weight.items()}
             for n, p in global_weight.items():
+                if n not in merge_increment_params.keys():
+                    merge_increment_params[n] = torch.zeros_like(p)
                 merge_increment_params[n] += p.clone().detach()
 
         # calculate knowledge base
