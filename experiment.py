@@ -103,6 +103,11 @@ class ExperimentStage(object):
                     task['tr_loader'],
                     task['query_loader']
                 )
+                # client.validate(
+                #     task['task_name'],
+                #     task['query_loader'],
+                #     task['gallery_loaders']
+                # )
                 self.record[f"{client.client_name}"][f"{comm_round}"][f"{task['task_name']}"] = {
                     "tr_acc": tr_output['accuracy'],
                     "tr_loss": tr_output['loss'],
