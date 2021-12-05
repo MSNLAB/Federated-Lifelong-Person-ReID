@@ -16,8 +16,8 @@ nohup python3 main.py --experiments ./configs/experiment_fedweit.json \
 
 export CUDA_VISIBLE_DEVICES=1
 
-nohup python3 main.py --experiments ./configs/experiment_ours_mm.json \
-                                    > task-ours-mm.log 2>&1 &
-
 nohup python3 main.py --experiments ./configs/experiment_ours_sm.json \
                                     > task-ours-sm.log 2>&1 &
+
+nohup python3 main.py --experiments ./configs/experiment_ours_mm.json \
+                                    > task-ours-mm.log 2>&1 &

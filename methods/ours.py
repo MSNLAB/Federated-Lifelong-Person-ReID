@@ -52,14 +52,22 @@ class DecomposedLayer(nn.Module):
         if global_weight_atten is None:
             global_weight_atten = torch.ones(self.global_weight.shape[-1])
             global_weight_atten = torch.sigmoid(global_weight_atten * e)
-        self.global_weight_atten = Parameter(global_weight_atten)
-        self.global_weight_atten.requires_grad = True
 
         if adaptive_weight is None:
             adaptive_weight = self.global_weight.data.clone().detach()
             adaptive_weight = (1 - global_weight_atten.data) * adaptive_weight
-        self.adaptive_weight = Parameter(adaptive_weight)
-        self.adaptive_weight.requires_grad = True
+
+        if self.global_weight_atten is None:
+            self.global_weight_atten = Parameter(global_weight_atten)
+            self.global_weight_atten.requires_grad = True
+        else:
+            self.global_weight_atten.data = global_weight_atten
+
+        if self.adaptive_weight is None:
+            self.adaptive_weight = Parameter(adaptive_weight)
+            self.adaptive_weight.requires_grad = True
+        else:
+            self.adaptive_weight.data = adaptive_weight
 
     @staticmethod
     def l1_pruning(weights: torch.Tensor, hyper_parameters: torch.Tensor):

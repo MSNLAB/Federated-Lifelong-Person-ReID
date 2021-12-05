@@ -107,8 +107,6 @@ class model_on_device(object):
         super(model_on_device, self).__init__()
 
     def __enter__(self):
-        if 'cuda' in self.device:
-            torch.cuda.empty_cache()
         self.model.to(self.device)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
