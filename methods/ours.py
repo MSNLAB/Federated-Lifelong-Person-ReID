@@ -33,6 +33,22 @@ class DecomposedLayer(nn.Module):
         self.global_weight = Parameter(tensor_reverse_permute(global_weight))
         self.global_weight.requires_grad = False
 
+        self.adaptive_bias = None
+        if adaptive_bias is not None:
+            self.adaptive_bias = Parameter(tensor_reverse_permute(adaptive_bias))
+            self.adaptive_bias.requires_grad = True
+
+        self.init_training_weights(global_weight_atten, adaptive_weight)
+
+        if lambda_l1 is None:
+            lambda_l1 = 1e-3
+        self.lambda_l1 = lambda_l1
+
+    def init_training_weights(
+            self,
+            global_weight_atten=None,
+            adaptive_weight=None
+    ) -> None:
         if global_weight_atten is None:
             global_weight_atten = torch.ones(self.global_weight.shape[-1])
             global_weight_atten = torch.sigmoid(global_weight_atten * e)
@@ -44,15 +60,6 @@ class DecomposedLayer(nn.Module):
             adaptive_weight = (1 - global_weight_atten.data) * adaptive_weight
         self.adaptive_weight = Parameter(adaptive_weight)
         self.adaptive_weight.requires_grad = True
-
-        self.adaptive_bias = None
-        if adaptive_bias is not None:
-            self.adaptive_bias = Parameter(tensor_reverse_permute(adaptive_bias))
-            self.adaptive_bias.requires_grad = True
-
-        if lambda_l1 is None:
-            lambda_l1 = 1e-3
-        self.lambda_l1 = lambda_l1
 
     @staticmethod
     def l1_pruning(weights: torch.Tensor, hyper_parameters: torch.Tensor):
@@ -264,7 +271,6 @@ class Model(nn.Module):
         }
 
     def update_model(self, params_state: Dict[str, torch.Tensor]):
-
         global_weight = {}
         if 'global_weight' in params_state.keys():
             global_weight = {
@@ -424,13 +430,14 @@ class Operator(OperatorModule):
 
             if y_teacher_count:
                 y_teacher /= y_teacher_count
-                # y_teacher += (torch.randn(y_teacher.shape) >> 10).to(y_teacher.device)  # add noise
+                y_teacher += (torch.randn(y_teacher.shape) >> 10).to(y_teacher.device)  # add noise
                 loss += kd_loss(y_student, y_teacher) * model.lambda_kd_2
 
             # l1 loss to make adaptive weight sparse
             d_layers = model.decomposed_module_leaves()
             sparseness = 0.0
             for name, module in d_layers:
+                sparseness += torch.abs(1.0 - module.global_weight_atten).sum()
                 sparseness += torch.abs(module.adaptive_weight).sum()
             loss += sparseness * model.lambda_l1
 
@@ -682,7 +689,11 @@ class Client(ClientModule):
                 self.load_model(self.model_ckpt_name)
             else:
                 self.load_model(self.current_task)
+
         self.update_model(model_params)
+        for name, decomposed_module in self.model.decomposed_module_leaves():
+            decomposed_module.init_training_weights()
+
         self.logger.info('Update model succeed by incremental state from server.')
 
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
@@ -698,7 +709,11 @@ class Client(ClientModule):
                 self.load_model(self.model_ckpt_name)
             else:
                 self.load_model(self.current_task)
+
         self.update_model(model_params)
+        for name, decomposed_module in self.model.decomposed_module_leaves():
+            decomposed_module.init_training_weights()
+
         self.logger.info('Update model succeed by integrated state from server.')
 
     def train(
@@ -872,16 +887,15 @@ class Server(ServerModule):
 
                     # summarize knowledge from adaptive params
                     if 'adaptive_weight' in n:
-                        module_name, modules = '', n.split('.')
-                        for idx in range(len(modules) - 1):
-                            module_name = module_name + modules[idx] + '.'
+                        module_name = n.replace('adaptive_weight', '')
 
                         global_weight = params[module_name + 'global_weight']
                         global_weight_atten = params[module_name + 'global_weight_atten']
                         adaptive_weight = params[module_name + 'adaptive_weight']
 
-                        global_params[n] = ((global_weight_atten * global_weight + adaptive_weight)
-                                            * k / train_total_cnt).type(dtype=p.dtype)
+                        global_params[module_name + 'global_weight'] = (
+                                (global_weight_atten * global_weight + adaptive_weight)
+                                * k / train_total_cnt).type(dtype=p.dtype)
 
                 for n, p in global_params.items():
                     if n not in merge_increment_params.keys():
