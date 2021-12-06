@@ -1,4 +1,5 @@
 import datetime
+import gc
 import json
 import os
 import random
@@ -18,21 +19,22 @@ class ExperimentStage(object):
         self.record = {}
 
     def __enter__(self):
-        self._empty_cuda_cache()
+        self._clear_cache()
         same_seeds(self.common_config['random_seed'])
         return self
 
     def __exit__(self, type, value, trace):
-        self._empty_cuda_cache()
+        self._clear_cache()
         return self
 
-    def _empty_cuda_cache(self):
+    def _clear_cache(self):
+        gc.collect()
         if 'cuda' in self.common_config['device']:
             torch.cuda.empty_cache()
 
     def performance(self):
         for job_id, job_config in enumerate(self.job_configs, 0):
-            self._empty_cuda_cache()
+            self._clear_cache()
             self.record = {}
 
             # Generate server and clients
@@ -93,7 +95,7 @@ class ExperimentStage(object):
 
         # Simulate training for each online client
         for client in online_clients:
-            self._empty_cuda_cache()
+            self._clear_cache()
             task_pipeline = client.args['task_pipeline']
             task = task_pipeline.next_task()
             if task['epochs'] != 0:
@@ -116,7 +118,7 @@ class ExperimentStage(object):
         # Simulate validation for each client
         if comm_round % val_intervals == 0:
             for client in clients:
-                self._empty_cuda_cache()
+                self._clear_cache()
                 task_pipeline = client.args['task_pipeline']
 
                 # validate all tasks
