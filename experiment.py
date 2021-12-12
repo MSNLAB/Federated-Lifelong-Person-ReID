@@ -90,7 +90,7 @@ class ExperimentStage(object):
         self.logger.info('Experiment stage build success.')
 
     def run(self):
-        for exp_id, exp_config in enumerate(self.exp_configs, 0):
+        for exp_config in self.exp_configs:
             # generate log with time-based savepath
             format_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
             log = ExperimentLog(os.path.join(
