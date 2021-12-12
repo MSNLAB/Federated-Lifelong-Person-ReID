@@ -16,9 +16,5 @@ if __name__ == '__main__':
         with open(experiment_path, 'r') as f:
             experiment_configs.append(json.load(fp=f))
 
-    # with ExperimentStage(common_config, experiment_configs) as exp_stage:
-    #     exp_stage.performance()
-
-    exp_stage = ExperimentStage(common_config, experiment_configs)
-    exp_stage.__enter__()
-    exp_stage.performance()
+    with ExperimentStage(common_config, experiment_configs) as exp_stage:
+        exp_stage.run()

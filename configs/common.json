@@ -1,7 +1,8 @@
 {
   "device": "cuda",
   "datasets_base": "/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-25/",
-  "checkpoints": "./ckpts/2021-12-6/",
-  "log_path": "./logs/2021-12-6/",
-  "random_seed": 123
+  "checkpoints": "./ckpts/2021-12-12/",
+  "log_path": "./logs/2021-12-12/",
+  "random_seed": 123,
+  "debug": true
 }

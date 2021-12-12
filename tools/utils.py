@@ -1,3 +1,4 @@
+import gc
 import os
 import random
 from typing import Dict, List, Tuple, Set, Union
@@ -97,6 +98,12 @@ def tensor_value(*tensors: torch.Tensor):
         return tensors[0].cpu().detach().item()
     else:
         return (tensor_value(tensor) for tensor in tensors)
+
+
+def clear_cache():
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 class model_on_device(object):
