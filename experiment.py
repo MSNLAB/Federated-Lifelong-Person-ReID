@@ -4,7 +4,7 @@ import random
 from datetime import datetime
 from typing import Dict, Tuple, Union, Any
 
-import torch.cuda
+import torch
 
 from builder import parser_server, parser_client
 from tools.logger import Logger
