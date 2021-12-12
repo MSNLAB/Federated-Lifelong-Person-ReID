@@ -91,6 +91,7 @@ class ExperimentStage(object):
 
     def run(self):
         for exp_config in self.exp_configs:
+
             # generate log with time-based savepath
             format_time = datetime.now().strftime('%Y-%m-%d-%H-%M')
             log = ExperimentLog(os.path.join(
@@ -202,7 +203,7 @@ class ExperimentStage(object):
 
                 clear_cache()
 
-        # Communication with server
+        # communication with server
         for client in online_clients:
             incremental_state = client.get_incremental_state()
             client.save_state(
