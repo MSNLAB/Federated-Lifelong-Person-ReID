@@ -1,68 +1,68 @@
-from typing import List
+import os
+from typing import List, Dict
 
 from torch.utils.data import DataLoader
 
-from datasets import get_augmentation_constructor
+from datasets import augmentations
 from datasets.datasets_loader import ReIDImageDataset
 
 
 class ReIDTaskPipeline(object):
 
-    def __init__(self, task_list: List, num_workers=0, pin_memory=False):
+    def __init__(self, task_list: List, task_opts: Dict, datasets_dir: str):
         self.task_list = task_list
+        self.task_opts = task_opts
+        self.datasets_dir = datasets_dir
         self.current_task_idx = -1
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
-        self.task_round_rest = [task['sustained_round'] for task in task_list]
+        self.task_round_rest = [task_opts['sustain_rounds'] for _ in task_list]
 
     def reach_final_task(self) -> bool:
         return self.current_task_idx + 1 == len(self.task_list)
 
     def get_task(self, idx: int = -1) -> DataLoader:
         task = self.task_list[idx]
-        task_name = task['task_name']
-        task_dataset_paths = task['dataset_paths']
-        img_size = task['img_size']
-        norm_mean = task['norm_mean']
-        norm_std = task["norm_std"]
-        epochs = task['epochs']
-        batch_size = task['batch_size']
-        augmentation = get_augmentation_constructor(task['augmentation'])(
-            size=img_size,
-            mean=norm_mean,
-            std=norm_std
+        task_paths = os.path.join(self.datasets_dir, task)
+
+        tr_augmentation = augmentations[self.task_opts['augment_opts']['level']](
+            size=self.task_opts['augment_opts']['img_size'],
+            mean=self.task_opts['augment_opts']['norm_mean'],
+            std=self.task_opts['augment_opts']['norm_std']
         )
-        none_augmentation = get_augmentation_constructor('none')(
-            size=img_size,
-            mean=norm_mean,
-            std=norm_std
+        none_augmentation = augmentations['none'](
+            size=self.task_opts['augment_opts']['img_size'],
+            mean=self.task_opts['augment_opts']['norm_mean'],
+            std=self.task_opts['augment_opts']['norm_std']
+        )
+        tr_loader = DataLoader(
+            ReIDImageDataset(os.path.join(task_paths, 'train'), tr_augmentation),
+            shuffle=True,
+            batch_size=self.task_opts['loader_opts']['batch_size'],
+            num_workers=self.task_opts['loader_opts']['num_workers'],
+            pin_memory=self.task_opts['loader_opts']['pin_memory'],
+            persistent_workers=self.task_opts['loader_opts']['persistent_workers'],
         )
 
-        tr_loader = DataLoader(
-            ReIDImageDataset([f'{_path}/train' for _path in task_dataset_paths], augmentation),
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory
-        )
-        gallery_loader = DataLoader(
-            ReIDImageDataset([f'{_path}/gallery' for _path in task["dataset_paths"]], none_augmentation),
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory
-        )
         query_loader = DataLoader(
-            ReIDImageDataset([f'{_path}/query' for _path in task["dataset_paths"]], none_augmentation),
-            batch_size=batch_size,
+            ReIDImageDataset(os.path.join(task_paths, 'query'), none_augmentation),
             shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory
+            batch_size=self.task_opts['loader_opts']['batch_size'],
+            num_workers=self.task_opts['loader_opts']['num_workers'],
+            pin_memory=self.task_opts['loader_opts']['pin_memory'],
+            persistent_workers=self.task_opts['loader_opts']['persistent_workers'],
+        )
+
+        gallery_loader = DataLoader(
+            ReIDImageDataset(os.path.join(task_paths, 'gallery'), none_augmentation),
+            shuffle=False,
+            batch_size=self.task_opts['loader_opts']['batch_size'],
+            num_workers=self.task_opts['loader_opts']['num_workers'],
+            pin_memory=self.task_opts['loader_opts']['pin_memory'],
+            persistent_workers=self.task_opts['loader_opts']['persistent_workers'],
         )
 
         return {
-            "task_name": task_name,
-            "epochs": epochs,
+            "task_name": task,
+            "tr_epochs": self.task_opts['train_epochs'],
             "tr_loader": tr_loader,
             "query_loader": query_loader,
             "gallery_loaders": gallery_loader

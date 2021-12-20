@@ -441,6 +441,7 @@ class Operator(OperatorModule):
 
             if y_teacher_count:
                 y_teacher /= y_teacher_count
+                # TODO: adversarial training
                 y_teacher += (torch.randn(y_teacher.shape) >> 10).to(y_teacher.device)  # add noise
                 loss += kd_loss(y_student, y_teacher) * model.lambda_kd_2
 
@@ -933,7 +934,7 @@ class Server(ServerModule):
             self.logger.info(f'Collect integrated state successfully from client {client_name}.')
 
     def get_dispatch_incremental_state(self) -> Dict:
-
+        # TODO: reform
         incremental_global_weight = {
             f'{name}.global_weight': layer.global_weight.clone().detach() \
             for name, layer in self.model.decomposed_module_leaves()

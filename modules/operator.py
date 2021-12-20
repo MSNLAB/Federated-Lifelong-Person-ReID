@@ -7,14 +7,12 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torch.utils.data import DataLoader
 
 from tools.logger import Logger
-from tools.utils import torch_device
 
 
 class OperatorModule(object):
 
     def __init__(self, optimizer: Optimizer, criterion: _Loss, scheduler: _LRScheduler = None,
-                 device: str = None, logger: Logger = None, **kwargs):
-        self.device = torch_device(device)
+                 logger: Logger = None, **kwargs):
         self.logger = logger if logger is not None else Logger()
         self.criterion = criterion
         self.optimizer = optimizer

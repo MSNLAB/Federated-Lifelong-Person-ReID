@@ -1,135 +1,104 @@
 import os
-from typing import Dict, Callable, Tuple, Any, List
+from typing import Dict, Callable, Any, List
 
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from criterions import get_criterion_constructor
+from criterions import criterions
 from datasets.datasets_pipeline import ReIDTaskPipeline
-from methods import generate_server, generate_operator, generate_client, generate_model
-from models import get_net_constructor, get_optimizer_constructor, get_scheduler_constructor
+from methods import methods
+from models import nets, optimizers, schedulers
 from modules.client import ClientModule
+from modules.model import ModelModule
 from modules.server import ServerModule
 
 
-def parser_model(method_name: str, model_config: Dict, device: str) -> nn.Module:
-    net_constructor = get_net_constructor(model_config['name'])
-    factory_kwargs = model_config['arguments'] if 'arguments' in model_config.keys() else {}
-    net = net_constructor(**factory_kwargs)
-    return generate_model(method_name, net, device, **factory_kwargs)
+def parser_model(method_name: str, model_config: Dict) -> nn.Module:
+    factory_kwargs = {n: p for n, p in model_config.items() if n not in ['name', 'fine_tuning']}
+    net = nets[model_config['name']](**factory_kwargs)
+    if not model_config['fine_tuning']:
+        for p in net.parameters():
+            p.requires_grad = False
+        for layer_name in model_config['fine_tuning']:
+            for p in net.get_submodule(layer_name).parameters():
+                p.requires_grad = True
+
+    if hasattr(methods[method_name], 'Model'):
+        return methods[method_name].Model(net=net, **factory_kwargs)
+    else:
+        return ModelModule(net)
 
 
-def parser_criterion(criterion_configs: Any) -> List[Tuple[Callable, Dict]]:
+def parser_criterion(criterion_configs: Any) -> List[Callable]:
     if isinstance(criterion_configs, dict):
         criterion_configs = [criterion_configs]
-    criterions = []
+
+    loss_fn = []
     for criterion_config in criterion_configs:
-        callable_criterion = get_criterion_constructor(criterion_config['name'])
-        factory_kwargs = criterion_config['arguments'] if 'arguments' in criterion_config.keys() else {}
-        criterions.append(callable_criterion(**factory_kwargs))
-    return criterions
+        factory_kwargs = {n: p for n, p in criterion_config.items() if n not in ['name']}
+        criterion = criterions[criterion_config['name']](**factory_kwargs)
+        loss_fn.append(criterion)
+    return loss_fn
 
 
 def parser_optimizer(model: nn.Module, optim_config: Dict) -> Optimizer:
-    optimizer = get_optimizer_constructor(optim_config['name'])
-    factory_kwargs = optim_config['arguments'] if 'arguments' in optim_config.keys() else {}
-
-    if not optim_config['fine_tuning']:
-        tuning_params = (p for p in model.parameters() if p.requires_grad)
-    else:
-        tuning_params = (p for layer_name in optim_config['fine_tuning_layers'] \
-                         for p in model.get_submodule(layer_name).parameters())
-
-    return optimizer(params=tuning_params, **factory_kwargs)
+    factory_kwargs = {n: p for n, p in optim_config.items() if n not in ['name']}
+    tuning_params = (p for p in model.net.parameters() if p.requires_grad)
+    return optimizers[optim_config['name']](params=tuning_params, **factory_kwargs)
 
 
 def parser_scheduler(optim: Optimizer, scheduler_config: Dict) -> Optimizer:
-    scheduler = get_scheduler_constructor(scheduler_config['name'])
-    factory_kwargs = scheduler_config['arguments'] if 'arguments' in scheduler_config.keys() else {}
-    return scheduler(optimizer=optim, **factory_kwargs)
+    factory_kwargs = {n: p for n, p in scheduler_config.items() if n not in ['name']}
+    return schedulers[scheduler_config['name']](optimizer=optim, **factory_kwargs)
 
 
-def parser_server(
-        job_name: str,
-        method_name: str,
-        server_config: Dict,
-        common_config: Dict,
-        **kwargs
-) -> ServerModule:
-    model = parser_model(method_name, server_config['model'], common_config['device'])
-    criterion = parser_criterion(server_config['criterion'])
-    optimizer = parser_optimizer(model, server_config['optimizer'])
-    scheduler = parser_scheduler(optimizer, server_config['scheduler'])
-    return generate_server(
-        method_name=method_name,
-        server_name=server_config['name'],
+def parser_server(exp_config: Dict, common_config: Dict) -> ServerModule:
+    model = parser_model(exp_config['exp_method'], exp_config['model_opts'])
+    criterion = parser_criterion(exp_config['criterion_opts'])
+    optimizer = parser_optimizer(model, exp_config['optimizer_opts'])
+    scheduler = parser_scheduler(optimizer, exp_config['scheduler_opts'])
+    operator = methods[exp_config['exp_method']].Operator(
+        method_name=exp_config['exp_method'],
+        criterion=criterion,
+        optimizer=optimizer,
+        scheduler=scheduler,
+    )
+    kwarg_factory = {n: p for n, p in exp_config['server'].items() if n not in ['server_name']}
+    return methods[exp_config['exp_method']].Server(
+        server_name=exp_config['server']['server_name'],
         model=model,
-        operator=generate_operator(
-            method_name=method_name,
+        operator=operator,
+        ckpt_root=os.path.join(common_config['checkpoints_dir'], exp_config['exp_name']),
+        **kwarg_factory
+    )
+
+
+def parser_clients(exp_config: Dict, common_config: Dict) -> ClientModule:
+    clients = []
+    for client_config in exp_config['clients']:
+        model = parser_model(exp_config['exp_method'], exp_config['model_opts'])
+        criterion = parser_criterion(exp_config['criterion_opts'])
+        optimizer = parser_optimizer(model, exp_config['optimizer_opts'])
+        scheduler = parser_scheduler(optimizer, exp_config['scheduler_opts'])
+        operator = methods[exp_config['exp_method']].Operator(
+            method_name=exp_config['exp_method'],
             criterion=criterion,
             optimizer=optimizer,
             scheduler=scheduler,
-            device=common_config['device']
-        ),
-        ckpt_root=os.path.join(common_config['checkpoints'], job_name),
-        random_seed=common_config['random_seed'],
-        **kwargs
-    )
+        )
+        task_pipeline = ReIDTaskPipeline(
+            task_list=client_config['tasks'],
+            task_opts=exp_config['task_opts'],
+            datasets_dir=common_config['datasets_dir']
+        )
+        kwarg_factory = {n: p for n, p in client_config.items() if n not in ['client_name']}
+        clients.append(methods[exp_config['exp_method']].Client(
+            client_name=client_config['client_name'],
+            model=model,
+            operator=operator,
+            ckpt_root=os.path.join(common_config['checkpoints_dir'], exp_config['exp_name']),
+            task_pipeline=task_pipeline,
+            **kwarg_factory
+        ))
 
-
-def parser_client(
-        job_name: str,
-        method_name: str,
-        client_config: Dict,
-        common_config: Dict,
-        **kwargs
-) -> ClientModule:
-    model = parser_model(method_name, client_config['model'], common_config['device'])
-    criterion = parser_criterion(client_config['criterion'])
-    optimizer = parser_optimizer(model, client_config['optimizer'])
-    scheduler = parser_scheduler(optimizer, client_config['scheduler'])
-
-    task_list = []
-    for task in client_config['tasks']:
-        task_list.append({
-            "task_name": task['task_name'],
-            "augmentation": task['augmentation'],
-            "epochs": task['epochs'],
-            "batch_size": task['batch_size'],
-            "sustained_round": task['sustained_round'],
-            "img_size": task['img_size'],
-            "norm_mean": task['norm_mean'],
-            "norm_std": task["norm_std"],
-            "dataset_paths":
-                [os.path.join(common_config['datasets_base'], task['datasets'])] \
-                    if isinstance(task['datasets'], str) else \
-                    [os.path.join(common_config['datasets_base'], task_name) for task_name in task['datasets']]
-        })
-
-    model_ckpt_name = None
-    if 'model_ckpt_name' in client_config.keys():
-        model_ckpt_name = client_config['model_ckpt_name']
-
-    task_pipeline = ReIDTaskPipeline(
-        task_list,
-        num_workers=client_config['workers'],
-        pin_memory=client_config['pin_memory']
-    )
-
-    return generate_client(
-        method_name=method_name,
-        client_name=client_config['name'],
-        model=model,
-        operator=generate_operator(
-            method_name=method_name,
-            criterion=criterion,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            device=common_config['device']
-        ),
-        ckpt_root=os.path.join(common_config['checkpoints'], job_name),
-        model_ckpt_name=model_ckpt_name,
-        task_pipeline=task_pipeline,
-        random_seed=common_config['random_seed'],
-        **kwargs
-    )
+    return clients

@@ -1,20 +1,25 @@
 import argparse
-import json
+
+import yaml
 
 from experiment import ExperimentStage
 
-with open('./configs/common.json', 'r') as f:
-    common_config = json.load(fp=f)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--experiments', type=str, nargs='+', required=True, help='Experiment json file path')
+    parser.add_argument('--experiments', type=str, nargs='+', required=True, help='Experiment yaml file path')
     args = vars(parser.parse_args())
+
+    with open('./configs/common.yaml', 'r') as f:
+        common_config = yaml.load(f, Loader=yaml.Loader)
+        if not isinstance(common_config['device'], list):
+            common_config['device'] = [common_config['device']]
 
     experiment_configs = []
     for experiment_path in args['experiments']:
         with open(experiment_path, 'r') as f:
-            experiment_configs.append(json.load(fp=f))
+            exp_config = common_config['defaults']
+            exp_config.update(yaml.load(f, Loader=yaml.Loader))
+            experiment_configs.append(exp_config)
 
     with ExperimentStage(common_config, experiment_configs) as exp_stage:
         exp_stage.run()

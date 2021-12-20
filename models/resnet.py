@@ -10,16 +10,14 @@ from torch.hub import load_state_dict_from_url
 
 from tools.winit import weights_init_kaiming, weights_init_classifier
 
+__all__ = ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152']
+
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
     'resnet34': 'https://download.pytorch.org/models/resnet34-b627a593.pth',
     'resnet50': 'https://download.pytorch.org/models/resnet50-0676ba61.pth',
     'resnet101': 'https://download.pytorch.org/models/resnet101-63fe2227.pth',
     'resnet152': 'https://download.pytorch.org/models/resnet152-394f9c45.pth',
-    'resnext50_32x4d': 'https://download.pytorch.org/models/resnext50_32x4d-7cdf4587.pth',
-    'resnext101_32x8d': 'https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth',
-    'wide_resnet50_2': 'https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth',
-    'wide_resnet101_2': 'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
 }
 
 
@@ -257,6 +255,9 @@ class ResNet_ReID(nn.Module):
     ) -> None:
         super(ResNet_ReID, self).__init__()
 
+        for n, p in kwargs.items():
+            self.__setattr__(n, p)
+
         self.model_name = model_name
         self.num_classes = num_classes
         self.neck = neck
@@ -321,3 +322,23 @@ class ResNet_ReID(nn.Module):
             return cls_score, global_feat  # global feature for triplet loss
         else:
             return global_feat
+
+
+def resnet18(**kwargs):
+    return ResNet_ReID(model_name='resnet18', **kwargs)
+
+
+def resnet34(**kwargs):
+    return ResNet_ReID(model_name='resnet34', **kwargs)
+
+
+def resnet50(**kwargs):
+    return ResNet_ReID(model_name='resnet50', **kwargs)
+
+
+def resnet101(**kwargs):
+    return ResNet_ReID(model_name='resnet101', **kwargs)
+
+
+def resnet152(**kwargs):
+    return ResNet_ReID(model_name='resnet152', **kwargs)

@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 
 from modules.operator import OperatorModule
 from tools.logger import Logger
-from tools.utils import torch_device
 
 
 class ClientModule(object):
@@ -20,11 +19,12 @@ class ClientModule(object):
             model_ckpt_name: str = None,
             **kwargs
     ):
-        self.device = torch_device(**kwargs)
         self.client_name = client_name
         self.model = model
         self.operator = operator
-        self.args = kwargs
+        for n, p in kwargs.items():
+            self.__setattr__(n, p)
+
         self.ckpt_path = os.path.join(ckpt_root, self.client_name)
         self.model_ckpt_name = model_ckpt_name
         self.logger = Logger(f'{client_name}')
@@ -40,7 +40,7 @@ class ClientModule(object):
         if not os.path.exists(self.ckpt_path):
             os.makedirs(self.ckpt_path)
         if os.path.exists(state_path):
-            return torch.load(state_path)
+            return torch.load(state_path, map_location='cpu')
         elif default_value is not None:
             return default_value
         else:
@@ -52,12 +52,13 @@ class ClientModule(object):
             state: torch.Tensor,
             cover: bool = False
     ) -> Any:
-        state_path = os.path.join(self.ckpt_path, f'{state_name}.ckpt')
-        if not os.path.exists(self.ckpt_path):
-            os.makedirs(self.ckpt_path)
-        if cover is False and os.path.exists(state_path):
-            raise ValueError(f"State checkpoint has already exist in '{state_path}'.")
-        torch.save(state, state_path)
+        if state_name is not None:
+            state_path = os.path.join(self.ckpt_path, f'{state_name}.ckpt')
+            if not os.path.exists(self.ckpt_path):
+                os.makedirs(self.ckpt_path)
+            if cover is False and os.path.exists(state_path):
+                raise ValueError(f"State checkpoint has already exist in '{state_path}'.")
+            torch.save(state, state_path)
 
     def load_model(self, model_name: str):
         self.model.load_state_dict(self.load_state(
@@ -92,6 +93,7 @@ class ClientModule(object):
             task_name: str,
             tr_loader: Union[List[DataLoader], DataLoader],
             val_loader: Union[List[DataLoader], DataLoader],
+            device: str,
             **kwargs
     ) -> Any:
         raise NotImplementedError
@@ -101,6 +103,7 @@ class ClientModule(object):
             task_name: str,
             tr_loader: Union[List[DataLoader], DataLoader],
             val_loader: Union[List[DataLoader], DataLoader],
+            device: str,
             **kwargs
     ) -> Any:
         raise NotImplementedError
@@ -110,6 +113,7 @@ class ClientModule(object):
             task_name: str,
             query_loader: Union[List[DataLoader], DataLoader],
             gallery_loader: Union[List[DataLoader], DataLoader],
+            device: str,
             **kwargs
     ) -> Any:
         raise NotImplementedError
@@ -119,6 +123,7 @@ class ClientModule(object):
             task_name: str,
             query_loader: Union[List[DataLoader], DataLoader],
             gallery_loader: Union[List[DataLoader], DataLoader],
+            device: str,
             **kwargs
     ) -> Any:
         raise NotImplementedError

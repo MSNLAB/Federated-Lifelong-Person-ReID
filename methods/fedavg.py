@@ -9,6 +9,7 @@
 # }
 ###########################################################################################
 
+import collections
 from typing import Any, Dict, Union, List
 
 import torch
@@ -33,10 +34,11 @@ class Operator(OperatorModule):
     ) -> Any:
         train_acc = train_loss = 0.0
         batch_cnt = data_cnt = 0
+        device = next(model.parameters()).device
 
         model.train()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data, target = data.to(self.device), classes_id.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), classes_id.to(device)
             self.optimizer.zero_grad()
             output = self._invoke_train(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -86,10 +88,11 @@ class Operator(OperatorModule):
     ) -> Any:
         pred_acc = pred_loss = 0.0
         batch_cnt = data_cnt = 0
+        device = next(model.parameters()).device
 
         model.train()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data, target = data.to(self.device), classes_id.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), classes_id.to(device)
             with torch.no_grad():
                 output = self._invoke_predict(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -134,10 +137,11 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features = []
+        device = next(model.parameters()).device
 
         model.eval()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data = data.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data = data.to(device)
             with torch.no_grad():
                 feature = self._invoke_inference(model, data, **kwargs)['feature']
                 features.append(feature.clone().detach())
@@ -171,10 +175,11 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features, labels = [], []
+        device = next(model.parameters()).device
 
         model.eval()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data, target = data.to(self.device), person_id.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), person_id.to(device)
             with torch.no_grad():
                 feature = self._invoke_valid(model, data, target)['feature']
                 features.append(feature.clone().detach())
@@ -227,7 +232,8 @@ class Client(ClientModule):
     def get_incremental_state(self, **kwargs) -> Dict:
         increment_params = {
             n: p.clone().detach() \
-            for n, p in self.model.state_dict().items()
+            for n, p in self.model.named_parameters() \
+            if p.requires_grad
         }
 
         return {
@@ -267,6 +273,7 @@ class Client(ClientModule):
             tr_loader: Union[List[DataLoader], DataLoader],
             val_loader: Union[List[DataLoader], DataLoader],
             early_stop_threshold: int = 3,
+            device: str = 'cpu',
             **kwargs
     ) -> Any:
         self.load_model(self.model_ckpt_name)
@@ -275,7 +282,7 @@ class Client(ClientModule):
         perf_loss, perf_acc, sustained_cnt = 1e8, 0, 0
         initial_lr = self.operator.optimizer.defaults['lr']
 
-        with model_on_device(self.model, self.device):
+        with model_on_device(self.model, device):
             for epoch in range(1, epochs + 1):
                 output = self.train_one_epoch(task_name, tr_loader, val_loader)
                 accuracy, loss, data_count = output['accuracy'], output['loss'], output['data_count']
@@ -291,12 +298,13 @@ class Client(ClientModule):
                 self.train_cnt += data_count
 
                 self.logger.info_train(
-                    task_name, self.device,
+                    task_name, device,
                     data_count, perf_acc, perf_loss,
                     epoch, epochs
                 )
 
         # Reset learning rate
+        self.operator.optimizer.state = collections.defaultdict(dict)
         for param_group in self.operator.optimizer.param_groups:
             param_group['lr'] = initial_lr
 
@@ -317,11 +325,12 @@ class Client(ClientModule):
             task_name: str,
             query_loader: Union[List[DataLoader], DataLoader],
             gallery_loader: Union[List[DataLoader], DataLoader],
+            device: str = 'cpu',
             **kwargs
     ) -> Any:
         self.load_model(self.model_ckpt_name)
 
-        with model_on_device(self.model, self.device):
+        with model_on_device(self.model, device):
             gallery_features = self.operator.invoke_inference(self.model, gallery_loader)['features']
             query_features = self.operator.invoke_inference(self.model, query_loader)['features']
 
@@ -343,11 +352,12 @@ class Client(ClientModule):
             task_name: str,
             query_loader: Union[List[DataLoader], DataLoader],
             gallery_loader: Union[List[DataLoader], DataLoader],
+            device: str = 'cpu',
             **kwargs
     ) -> Any:
         self.load_model(self.model_ckpt_name)
 
-        with model_on_device(self.model, self.device):
+        with model_on_device(self.model, device):
             gallery_output = self.operator.invoke_valid(self.model, gallery_loader)
             query_output = self.operator.invoke_valid(self.model, query_loader)
 
@@ -361,31 +371,27 @@ class Client(ClientModule):
             query_labels=query_output['labels'],
             gallery_features=gallery_output['features'],
             gallery_labels=gallery_output['labels'],
-            device=self.device
+            device=device
         )
 
-        avg_representation = torch.cat([query_output['features'], gallery_output['features']], dim=0)
-        avg_representation = torch.sum(avg_representation, dim=0) / len(avg_representation)
+        avg_rep = torch.cat([query_output['features'], gallery_output['features']], dim=0)
+        avg_rep = torch.sum(avg_rep, dim=0) / len(avg_rep)
 
         self.logger.info_validation(task_name, query_size, gallery_size, cmc, mAP)
-        return cmc, mAP, avg_representation
+        return cmc, mAP, avg_rep
 
 
 class Server(ServerModule):
 
     def calculate(self) -> Any:
-        merge_increment_params = {
-            n: torch.zeros_like(p) \
-            for n, p in self.model.state_dict().items()
-        }
+        merge_increment_params = {}
+        train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
 
-        train_total_cnt = sum(
-            [client['train_cnt'] for _, client in self.clients.items()]
-        )
-
-        for _, client in self.clients.items():
-            k, params = client['train_cnt'], client['incremental_model_params']
+        for cname, cstate in self.clients.items():
+            k, params = cstate['train_cnt'], cstate['incremental_model_params']
             for i, (n, p) in enumerate(params.items()):
+                if n not in merge_increment_params.keys():
+                    merge_increment_params[n] = torch.zeros_like(p)
                 merge_increment_params[n] += (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype)
 
         self.update_model(merge_increment_params)
@@ -404,16 +410,17 @@ class Server(ServerModule):
             self.clients[client_name] = client_state
             self.logger.info(f'Collect integrated state successfully from client {client_name}.')
 
-    def get_dispatch_incremental_state(self) -> Dict:
+    def get_dispatch_incremental_state(self, client_name: str) -> Dict:
         dispatch_state = {
             'incremental_model_params': {
                 n: p.clone().detach() \
-                for n, p in self.model.state_dict().items()
+                for n, p in self.model.named_parameters()
+                if p.requires_grad
             }
         }
         return dispatch_state
 
-    def get_dispatch_integrated_state(self) -> Dict:
+    def get_dispatch_integrated_state(self, client_name: str) -> Dict:
         dispatch_state = {
             'integrated_model_params': {
                 n: p.clone().detach() \

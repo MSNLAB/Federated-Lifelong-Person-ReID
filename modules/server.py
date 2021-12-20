@@ -6,17 +6,16 @@ import torch.nn as nn
 
 from modules.operator import OperatorModule
 from tools.logger import Logger
-from tools.utils import torch_device
 
 
 class ServerModule(object):
     def __init__(self, server_name: str, model: nn.Module,
                  operator: OperatorModule, ckpt_root: str, **kwargs):
-        self.device = torch_device(**kwargs)
         self.server_name = server_name
         self.model = model
         self.operator = operator
-        self.args = kwargs
+        for n, p in kwargs.items():
+            self.__setattr__(n, p)
         self.ckpt_path = os.path.join(ckpt_root, self.server_name)
         self.clients = {}
         self.logger = Logger(self.server_name)
@@ -96,8 +95,8 @@ class ServerModule(object):
     def set_client_integrated_state(self, client_name: str, client_state: Dict) -> None:
         return None
 
-    def get_dispatch_incremental_state(self) -> Dict:
+    def get_dispatch_incremental_state(self, client_name: str) -> Dict:
         return None
 
-    def get_dispatch_integrated_state(self) -> Dict:
+    def get_dispatch_integrated_state(self, client_name: str) -> Dict:
         return None

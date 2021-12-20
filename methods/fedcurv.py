@@ -7,19 +7,21 @@
 # }
 #############################################################################################
 
+import collections
 from typing import Any, Dict, Union, Optional, List
 
 import torch
 import torch.nn.functional as F
-from torch import nn as nn, device
+from torch import nn as nn
 from torch.nn.modules.module import T
 from torch.utils.data import DataLoader
 
 from modules.client import ClientModule
+from modules.model import ModelModule
 from modules.operator import OperatorModule
 from modules.server import ServerModule
 from tools.evaluate import calculate_similarity_distance, evaluate
-from tools.utils import torch_device, model_on_device
+from tools.utils import model_on_device
 
 
 class Operator(OperatorModule):
@@ -32,10 +34,11 @@ class Operator(OperatorModule):
     ) -> Any:
         train_acc = train_loss = 0.0
         batch_cnt = data_cnt = 0
+        device = next(model.parameters()).device
 
         model.train()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data, target = data.to(self.device), classes_id.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), classes_id.to(device)
             self.optimizer.zero_grad()
             output = self._invoke_train(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -86,10 +89,11 @@ class Operator(OperatorModule):
     ) -> Any:
         pred_acc = pred_loss = 0.0
         batch_cnt = data_cnt = 0
+        device = next(model.parameters()).device
 
         model.train()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data, target = data.to(self.device), classes_id.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), classes_id.to(device)
             with torch.no_grad():
                 output = self._invoke_predict(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -134,10 +138,11 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features = []
+        device = next(model.parameters()).device
 
         model.eval()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data = data.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data = data.to(device)
             with torch.no_grad():
                 feature = self._invoke_inference(model, data, **kwargs)['feature']
                 features.append(feature.clone().detach())
@@ -171,10 +176,11 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features, labels = [], []
+        device = next(model.parameters()).device
 
         model.eval()
-        for data, person_id, classes_id in self.iter_dataloader(dataloader):
-            data, target = data.to(self.device), person_id.to(self.device)
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), person_id.to(device)
             with torch.no_grad():
                 feature = self._invoke_valid(model, data, target)['feature']
                 features.append(feature.clone().detach())
@@ -206,20 +212,17 @@ class Operator(OperatorModule):
         return {'feature': feat}
 
 
-class Model(nn.Module):
+class Model(ModelModule):
 
     def __init__(
             self,
             net: Union[nn.Sequential, nn.Module],
             operator: Operator = None,
             lambda_penalty: float = 100.0,
-            device: str = None,
             **kwargs
     ) -> None:
-        super(Model, self).__init__()
+        super(Model, self).__init__(net)
 
-        self.device = torch_device(device)
-        self.net = net
         self.operator = operator
         self.lambda_penalty = lambda_penalty
         self.arg = kwargs
@@ -245,14 +248,14 @@ class Model(nn.Module):
         }
 
         if len(self.recall_dataloaders) > 0:
+            device = next(self.net.parameters()).device
             number_recall_data = sum(
                 [len(loader) for task_name, loader in self.recall_dataloaders.items()]
             )
-
             for task_name, recall_dataloader in self.recall_dataloaders.items():
                 for data, person_id, classes_id in recall_dataloader:
                     self.net.zero_grad()
-                    data, target = data.to(self.device), classes_id.to(self.device)
+                    data, target = data.to(device), classes_id.to(device)
                     loss = self.operator._invoke_train(self, data, target)['loss']
                     loss.backward()
                     for n, p in self.params.items():
@@ -288,7 +291,7 @@ class Model(nn.Module):
             )
         return super().cpu()
 
-    def cuda(self: T, device: Optional[Union[int, device]] = None) -> T:
+    def cuda(self: T, device: Optional[Union[int, Any]] = None) -> T:
         self.net.cuda()
         self.precision_matrices = {n: p.cuda() for n, p in self.precision_matrices.items()}
         self.params_old = {n: p.cuda() for n, p in self.params_old.items()}
@@ -392,7 +395,8 @@ class Client(ClientModule):
     def get_incremental_state(self, **kwargs) -> Dict:
         increment_params = {
             n: p.clone().detach() \
-            for n, p in self.model.net.state_dict().items()
+            for n, p in self.model.named_parameters() \
+            if p.requires_grad
         }
 
         increment_precision_matrices = {
@@ -424,8 +428,6 @@ class Client(ClientModule):
         }
 
     def update_by_incremental_state(self, state: Dict, **kwargs) -> Any:
-        self.train_cnt = self.test_cnt = 0
-
         other_increment_params = state['other_clients_incremental_params']
         other_increment_matrices = state['other_clients_precision_matrices']
         other_precision_matrices = []
@@ -439,14 +441,13 @@ class Client(ClientModule):
             'other_precision_matrices': other_precision_matrices
         }
 
+        self.train_cnt = self.test_cnt = 0
         self.load_model(self.model_ckpt_name)
         self.update_model(model_state)
         self.save_model(self.model_ckpt_name)
         self.logger.info('Update model succeed by incremental state from server.')
 
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
-        self.train_cnt = self.test_cnt = 0
-
         other_increment_params = state['other_clients_integrated_params']
         other_increment_matrices = state['other_clients_precision_matrices']
         other_precision_matrices = []
@@ -460,6 +461,7 @@ class Client(ClientModule):
             'other_precision_matrices': other_precision_matrices
         }
 
+        self.train_cnt = self.test_cnt = 0
         self.load_model(self.model_ckpt_name)
         self.update_model(model_state)
         self.save_model(self.model_ckpt_name)
@@ -472,6 +474,7 @@ class Client(ClientModule):
             tr_loader: Union[List[DataLoader], DataLoader],
             val_loader: Union[List[DataLoader], DataLoader],
             early_stop_threshold: int = 3,
+            device: str = 'cpu',
             **kwargs
     ) -> Any:
         self.load_model(self.model_ckpt_name)
@@ -480,7 +483,7 @@ class Client(ClientModule):
         perf_loss, perf_acc, sustained_cnt = 1e8, 0, 0
         initial_lr = self.operator.optimizer.defaults['lr']
 
-        with model_on_device(self.model, self.device):
+        with model_on_device(self.model, device):
             for epoch in range(1, epochs + 1):
                 output = self.train_one_epoch(task_name, tr_loader, val_loader)
                 accuracy, loss, data_count = output['accuracy'], output['loss'], output['data_count']
@@ -496,7 +499,7 @@ class Client(ClientModule):
                 self.train_cnt += data_count
 
                 self.logger.info_train(
-                    task_name, self.device,
+                    task_name, device,
                     data_count, perf_acc, perf_loss,
                     epoch, epochs
                 )
@@ -504,6 +507,7 @@ class Client(ClientModule):
             self.model.remember_task(task_name, val_loader)
 
         # Reset learning rate
+        self.operator.optimizer.state = collections.defaultdict(dict)
         for param_group in self.operator.optimizer.param_groups:
             param_group['lr'] = initial_lr
 
@@ -524,11 +528,12 @@ class Client(ClientModule):
             task_name: str,
             query_loader: Union[List[DataLoader], DataLoader],
             gallery_loader: Union[List[DataLoader], DataLoader],
+            device: str = 'cpu',
             **kwargs
     ) -> Any:
         self.load_model(self.model_ckpt_name)
 
-        with model_on_device(self.model, self.device):
+        with model_on_device(self.model, device):
             gallery_features = self.operator.invoke_inference(self.model, gallery_loader)['features']
             query_features = self.operator.invoke_inference(self.model, query_loader)['features']
 
@@ -550,11 +555,12 @@ class Client(ClientModule):
             task_name: str,
             query_loader: Union[List[DataLoader], DataLoader],
             gallery_loader: Union[List[DataLoader], DataLoader],
+            device: str = 'cpu',
             **kwargs
     ) -> Any:
         self.load_model(self.model_ckpt_name)
 
-        with model_on_device(self.model, self.device):
+        with model_on_device(self.model, device):
             gallery_output = self.operator.invoke_valid(self.model, gallery_loader)
             query_output = self.operator.invoke_valid(self.model, query_loader)
 
@@ -568,14 +574,14 @@ class Client(ClientModule):
             query_labels=query_output['labels'],
             gallery_features=gallery_output['features'],
             gallery_labels=gallery_output['labels'],
-            device=self.device
+            device=device
         )
 
-        avg_representation = torch.cat([query_output['features'], gallery_output['features']], dim=0)
-        avg_representation = torch.sum(avg_representation, dim=0) / len(avg_representation)
+        avg_rep = torch.cat([query_output['features'], gallery_output['features']], dim=0)
+        avg_rep = torch.sum(avg_rep, dim=0) / len(avg_rep)
 
         self.logger.info_validation(task_name, query_size, gallery_size, cmc, mAP)
-        return cmc, mAP, avg_representation
+        return cmc, mAP, avg_rep
 
 
 class Server(ServerModule):
@@ -584,18 +590,14 @@ class Server(ServerModule):
         self.model.update_model(params_state)
 
     def calculate(self) -> Any:
-        merge_increment_params = {
-            n: torch.zeros_like(p) \
-            for n, p in self.model.net.state_dict().items()
-        }
-
-        train_total_cnt = sum(
-            [client['train_cnt'] for _, client in self.clients.items()]
-        )
+        merge_increment_params = {}
+        train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
 
         for _, client in self.clients.items():
             k, params = client['train_cnt'], client['incremental_model_params']
             for i, (n, p) in enumerate(params.items()):
+                if n not in merge_increment_params.keys():
+                    merge_increment_params[n] = torch.zeros_like(p)
                 merge_increment_params[n] += (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype)
 
         model_state = {'net_params': merge_increment_params}
@@ -616,10 +618,11 @@ class Server(ServerModule):
             self.clients[client_name] = client_state
             self.logger.info(f'Collect integrated state successfully from client {client_name}.')
 
-    def get_dispatch_incremental_state(self) -> Dict:
+    def get_dispatch_incremental_state(self, client_name: str) -> Dict:
         incremental_model_params = {
             n: p.clone().detach() \
-            for n, p in self.model.net.state_dict().items()
+            for n, p in self.model.named_parameters()
+            if p.requires_grad
         }
 
         other_clients_incremental_params = [
@@ -642,7 +645,7 @@ class Server(ServerModule):
             'other_clients_precision_matrices': other_clients_precision_matrices,
         }
 
-    def get_dispatch_integrated_state(self) -> Dict:
+    def get_dispatch_integrated_state(self, client_name: str) -> Dict:
         integrated_model_params = {
             n: p.clone().detach() \
             for n, p in self.model.net.state_dict().items()

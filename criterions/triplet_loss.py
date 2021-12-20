@@ -5,16 +5,20 @@
 import torch
 import torch.nn.functional as F
 
+from modules.criterion import CriterionModule
 from tools.distance import compute_cosine_distance, compute_euclidean_distance
 
 
-class TripletLoss(object):
+class TripletLoss(CriterionModule):
     """Modified from Tong Xiao's open-reid (https://github.com/Cysu/open-reid).
     Reference:
     Alexander Hermans et al. In Defense of the Triplet Loss for Person Re-Identification.
     """
 
-    def __init__(self, margin=None, norm_feat=False, hard_mining=False):
+    def __init__(self, margin=None, norm_feat=False, hard_mining=False, **kwargs):
+        super(TripletLoss, self).__init__()
+        for n, p in kwargs.items():
+            self.__setattr__(n, p)
         self.margin = margin
         self.norm_feat = norm_feat
         self.hard_mining = hard_mining

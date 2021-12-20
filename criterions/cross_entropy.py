@@ -5,8 +5,10 @@
 import torch
 import torch.nn as nn
 
+from modules.criterion import CriterionModule
 
-class CrossEntropyLabelSmooth(nn.Module):
+
+class CrossEntropyLabelSmooth(CriterionModule):
     """Cross entropy loss with label smoothing regularized.
     Reference:
     Szegedy et al. Rethinking the Inception Architecture for Computer Vision. CVPR 2016.
@@ -16,8 +18,10 @@ class CrossEntropyLabelSmooth(nn.Module):
         epsilon (float): weight.
     """
 
-    def __init__(self, num_classes, epsilon=0.1):
+    def __init__(self, num_classes, epsilon=0.1, **kwargs):
         super(CrossEntropyLabelSmooth, self).__init__()
+        for n, p in kwargs.items():
+            self.__setattr__(n, p)
         self.num_classes = num_classes
         self.epsilon = epsilon
         self.logsoftmax = nn.LogSoftmax(dim=1)
