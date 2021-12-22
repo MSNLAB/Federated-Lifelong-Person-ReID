@@ -395,7 +395,7 @@ class Client(ClientModule):
     def get_incremental_state(self, **kwargs) -> Dict:
         increment_params = {
             n: p.clone().detach() \
-            for n, p in self.model.named_parameters() \
+            for n, p in self.model.net.named_parameters() \
             if p.requires_grad
         }
 
@@ -621,7 +621,7 @@ class Server(ServerModule):
     def get_dispatch_incremental_state(self, client_name: str) -> Dict:
         incremental_model_params = {
             n: p.clone().detach() \
-            for n, p in self.model.named_parameters()
+            for n, p in self.model.net.named_parameters()
             if p.requires_grad
         }
 

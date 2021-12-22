@@ -114,7 +114,7 @@ class ExperimentStage(object):
 
     def __exit__(self, type, value, trace):
         clear_cache()
-        if issubclass(type, Exception):
+        if type is not None and issubclass(type, Exception):
             self.logger.error(value)
             raise trace
         return self
@@ -208,7 +208,7 @@ class ExperimentStage(object):
                 futures = []
                 for client in clients:
                     futures.append(pool.submit(
-                        self._process_train,
+                        self._process_val,
                         *(client, log, curr_round, self.container)
                     ))
                 for future in as_completed(futures):

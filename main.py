@@ -17,7 +17,7 @@ if __name__ == '__main__':
     experiment_configs = []
     for experiment_path in args['experiments']:
         with open(experiment_path, 'r') as f:
-            exp_config = common_config['defaults']
+            exp_config = dict(common_config['defaults'])
             exp_config.update(yaml.load(f, Loader=yaml.Loader))
             experiment_configs.append(exp_config)
 
