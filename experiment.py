@@ -104,7 +104,7 @@ class ExperimentStage(object):
     def __init__(self, common_config: Dict, exp_configs: Union[Dict, Tuple[Dict]]):
         self.common_config = common_config
         self.exp_configs = [exp_configs] if isinstance(exp_configs, Dict) else exp_configs
-        self.logger = Logger('env')
+        self.logger = Logger('stage')
         self.container = VirtualContainer(self.common_config['device'])
 
     def __enter__(self):
@@ -162,7 +162,9 @@ class ExperimentStage(object):
             clients = parser_clients(exp_config, self.common_config)
 
             # simulate communication process
-            for curr_round in range(1, int(exp_config['exp_opts']['comm_rounds']) + 1):
+            comm_rounds = int(exp_config['exp_opts']['comm_rounds'])
+            for curr_round in range(1, comm_rounds + 1):
+                self.logger.info(f'Start communication round: {curr_round:0>3d}/{comm_rounds:0>3d}')
                 self._process_one_round(curr_round, server, clients, exp_config, log)
 
             del server, clients, log
