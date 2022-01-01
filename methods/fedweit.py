@@ -368,6 +368,17 @@ class Model(ModelModule):
             for name, layer in decomposed_layers \
             if layer.aw_kb is not None
         }
+        bn_params = {
+            **{f'{name}.running_mean': layer.running_mean.clone().detach() \
+               for name, layer in decomposed_layers \
+               if isinstance(layer, DecomposedBatchNorm) and layer.running_mean is not None},
+            **{f'{name}.running_var': layer.running_var.clone().detach() \
+               for name, layer in decomposed_layers \
+               if isinstance(layer, DecomposedBatchNorm) and layer.running_var is not None},
+            **{f'{name}.num_batches_tracked': layer.num_batches_tracked \
+               for name, layer in decomposed_layers \
+               if isinstance(layer, DecomposedBatchNorm) and layer.num_batches_tracked is not None},
+        }
         pre_trained_weights = {
             f'{l_name}.{p_name}': params.clone().detach()
             for l_name, layer in pre_trained_layers \
@@ -381,6 +392,7 @@ class Model(ModelModule):
             'bias': bias_weights,
             'atten': atten_weights,
             'aw_kb': kb_weights,
+            'bn': bn_params,
             'pre_trained_weights': pre_trained_weights,
         }
 
@@ -428,6 +440,13 @@ class Model(ModelModule):
                     for n, p in params_state['aw_kb'].items()
                 }
 
+            bn_params = {}
+            if 'bn' in params_state.keys():
+                bn_params = {
+                    n: p.clone().detach() \
+                    for n, p in params_state['bn'].items()
+                }
+
             pre_trained_weights = {}
             if 'pre_trained_weights' in params_state.keys():
                 pre_trained_weights = {
@@ -442,6 +461,7 @@ class Model(ModelModule):
                 **bias_weights,
                 **atten_weights,
                 **kb_weights,
+                **bn_params,
                 **pre_trained_weights,
             }
 
@@ -733,6 +753,7 @@ class Client(ClientModule):
             'train_cnt': self.train_cnt,
             'integrated_aw': integrated_adaptive_weights,
             'integrated_gw': integrated_global_weights,
+            'integrated_bn': None,
             'pre_trained_weights': pre_trained_weights,
         }
 

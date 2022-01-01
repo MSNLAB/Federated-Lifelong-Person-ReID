@@ -57,10 +57,10 @@ class ExperimentLog(object):
 
 class VirtualContainer(object):
 
-    def __init__(self, devices: list) -> None:
+    def __init__(self, devices: list, parallel: int = 1) -> None:
         super().__init__()
         self.lock = Lock()
-        self.devices = {device: 1 for device in devices}
+        self.devices = {device: parallel for device in devices}
 
     def max_worker(self):
         return sum(self.devices.values())
@@ -105,7 +105,7 @@ class ExperimentStage(object):
         self.common_config = common_config
         self.exp_configs = [exp_configs] if isinstance(exp_configs, Dict) else exp_configs
         self.logger = Logger('stage')
-        self.container = VirtualContainer(self.common_config['device'])
+        self.container = VirtualContainer(self.common_config['device'], self.common_config['parallel'])
 
     def __enter__(self):
         clear_cache()

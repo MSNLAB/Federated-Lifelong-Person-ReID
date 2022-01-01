@@ -40,6 +40,7 @@ class ReIDTaskPipeline(object):
             num_workers=self.task_opts['loader_opts']['num_workers'],
             pin_memory=self.task_opts['loader_opts']['pin_memory'],
             persistent_workers=self.task_opts['loader_opts']['persistent_workers'],
+            multiprocessing_context=self.task_opts['loader_opts']['multiprocessing_context'],
         )
 
         query_loader = DataLoader(
@@ -49,6 +50,7 @@ class ReIDTaskPipeline(object):
             num_workers=self.task_opts['loader_opts']['num_workers'],
             pin_memory=self.task_opts['loader_opts']['pin_memory'],
             persistent_workers=self.task_opts['loader_opts']['persistent_workers'],
+            multiprocessing_context=self.task_opts['loader_opts']['multiprocessing_context'],
         )
 
         gallery_loader = DataLoader(
@@ -58,6 +60,7 @@ class ReIDTaskPipeline(object):
             num_workers=self.task_opts['loader_opts']['num_workers'],
             pin_memory=self.task_opts['loader_opts']['pin_memory'],
             persistent_workers=self.task_opts['loader_opts']['persistent_workers'],
+            multiprocessing_context=self.task_opts['loader_opts']['multiprocessing_context'],
         )
 
         return {
