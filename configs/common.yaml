@@ -1,7 +1,7 @@
 device:
   - cuda:0
   - cuda:1
-datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-25/
+datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-31/
 checkpoints_dir: ./ckpts/2021-12-31/
 logs_dir: ./logs/2021-12-31/
 
@@ -48,6 +48,6 @@ defaults:
       norm_std: [ 0.229, 0.224, 0.225 ]
     loader_opts:
       batch_size: 64
-      num_workers: 0
-      pin_memory: false
-      persistent_workers: false
+      num_workers: 2
+      pin_memory: true
+      persistent_workers: true

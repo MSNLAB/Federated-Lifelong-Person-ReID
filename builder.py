@@ -16,7 +16,7 @@ from modules.server import ServerModule
 def parser_model(method_name: str, model_config: Dict) -> nn.Module:
     factory_kwargs = {n: p for n, p in model_config.items() if n not in ['name', 'fine_tuning']}
     net = nets[model_config['name']](**factory_kwargs)
-    if not model_config['fine_tuning']:
+    if model_config['fine_tuning']:
         for p in net.parameters():
             p.requires_grad = False
         for layer_name in model_config['fine_tuning']:
