@@ -141,9 +141,77 @@ class DecomposedConv2D(DecomposedLayer):
         )
 
 
+class DecomposedBatchNorm(DecomposedLayer):
+    def __init__(
+            self,
+            running_mean: torch.Tensor,
+            running_var: torch.Tensor,
+            num_batches_tracked: torch.Tensor,
+            track_running_stats: bool,
+            shared_weight: torch.Tensor,
+            bias: torch.Tensor = None,
+            mask: torch.Tensor = None,
+            adaptive: torch.Tensor = None,
+            knowledge_base: torch.Tensor = None,
+            atten: torch.Tensor = None,
+            lambda_l1: float = None,
+            lambda_mask: float = None,
+            kb_cnt: int = 5,
+            momentum: float = 0.1,
+            eps: float = 1e-5,
+            **kwargs
+    ) -> None:
+        super(DecomposedBatchNorm, self).__init__(shared_weight, bias, mask, adaptive, knowledge_base,
+                                                  atten, lambda_l1, lambda_mask, kb_cnt, **kwargs)
+        self.register_buffer('running_mean', running_mean)
+        self.register_buffer('running_var', running_var)
+        self.register_buffer('num_batches_tracked', num_batches_tracked)
+        self.track_running_stats = track_running_stats
+        self.momentum = momentum
+        self.eps = eps
+
+    def forward(self, data: torch.Tensor):
+        if self.momentum is None:
+            exponential_average_factor = 0.0
+        else:
+            exponential_average_factor = self.momentum
+
+        if self.training and self.track_running_stats:
+            if self.num_batches_tracked is not None:  # type: ignore[has-type]
+                self.num_batches_tracked = self.num_batches_tracked + 1  # type: ignore[has-type]
+                if self.momentum is None:  # use cumulative moving average
+                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
+                else:  # use exponential moving average
+                    exponential_average_factor = self.momentum
+
+        if self.training:
+            bn_training = True
+        else:
+            bn_training = (self.running_mean is None) and (self.running_var is None)
+
+        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
+        bias = self.bias
+
+        return F.batch_norm(
+            input=data,
+            running_mean=self.running_mean if not self.training or self.track_running_stats else None,
+            running_var=self.running_var if not self.training or self.track_running_stats else None,
+            weight=theta,
+            bias=bias,
+            training=bn_training,
+            momentum=exponential_average_factor,
+            eps=self.eps,
+        )
+
+
 class Model(ModelModule):
-    _decomposed_type_from = [nn.Linear, nn.Conv2d]
-    _decomposed_type_to = [DecomposedLayer, DecomposedConv2D]
+    _module_transform_lut = {
+        nn.Linear: DecomposedLayer,
+        nn.Conv2d: DecomposedConv2D,
+        nn.BatchNorm2d: DecomposedBatchNorm,
+    }
 
     def __init__(
             self,
@@ -162,42 +230,18 @@ class Model(ModelModule):
         self.kb_cnt = kb_cnt
         self.args = kwargs
         self.model_list = {}
-        self.layer_convert()
+        self.layer_convert(self.net)
 
-    def module_leaves(self) -> List:
-        leaves = []
-        q = Queue()
-        for name, module in self.net.named_children():
-            q.put((name, module))
-        while not q.empty():
-            q_name, q_module = q.get()
-            client_cnt = 0
-            for name, module in q_module.named_children():
-                q.put((f'{q_name}.{name}', module))
-                client_cnt += 1
-            if client_cnt == 0:
-                leaves.append((q_name, q_module))
-
-        return leaves
-
-    def decomposed_module_leaves(self) -> List:
-        return [(name, module) for name, module in self.module_leaves() \
-                if type(module) in self._decomposed_type_to]
-
-    def remember_params(self, model_name: str):
-        self.model_list[model_name] = copy.deepcopy(self.net)
-
-    def layer_convert(self):
-        leaves = self.module_leaves()
+    def layer_convert(self, net):
+        leaves = self.module_leaves(net)
         for name, module in leaves:
-            if type(module) not in self._decomposed_type_from:
-                continue
-
-            tuning_flag = False
-            for param in module.parameters():
-                if param.requires_grad:
-                    tuning_flag = True
-            if not tuning_flag:
+            transform_flag = False
+            if type(module) in self._module_transform_lut.keys():
+                transform_flag = True
+                for param in module.parameters():
+                    if not param.requires_grad:
+                        transform_flag = False
+            if not transform_flag:
                 continue
 
             if isinstance(module, nn.Linear):
@@ -220,14 +264,60 @@ class Model(ModelModule):
                     kb_cnt=self.kb_cnt
                 )
 
+            if isinstance(module, nn.BatchNorm2d):
+                module = DecomposedBatchNorm(
+                    running_mean=module.running_mean,
+                    running_var=module.running_var,
+                    num_batches_tracked=module.num_batches_tracked,
+                    track_running_stats=module.track_running_stats,
+                    momentum=module.momentum,
+                    eps=module.eps,
+                    shared_weight=module.weight,
+                    bias=module.bias,
+                    lambda_l1=self.lambda_l1,
+                    lambda_mask=self.lambda_mask,
+                    kb_cnt=self.kb_cnt,
+                )
+
             # replace module with decomposed layer
-            pa_module = self.net
+            pa_module = net
             name_path = name.split('.')
             for i, module_name in enumerate(name_path):
                 if i + 1 == len(name_path):
                     pa_module.add_module(module_name, module)
                 else:
                     pa_module = pa_module.__getattr__(module_name)
+
+    @staticmethod
+    def module_leaves(model: nn.Module) -> List:
+        leaves = []
+        q = Queue()
+        for name, module in model.named_children():
+            q.put((name, module))
+        while not q.empty():
+            q_name, q_module = q.get()
+            client_cnt = 0
+            for name, module in q_module.named_children():
+                q.put((f'{q_name}.{name}', module))
+                client_cnt += 1
+            if client_cnt == 0:
+                leaves.append((q_name, q_module))
+        return leaves
+
+    def pre_trained_module_leaves(self) -> List:
+        return [(name, module) for name, module in self.module_leaves(self.net) \
+                if not type(module) in self._module_transform_lut.values()]
+
+    def decomposed_module_leaves(self) -> List:
+        return [(name, module) for name, module in self.module_leaves(self.net) \
+                if type(module) in self._module_transform_lut.values()]
+
+    def remember_params(self, model_name: str):
+        copied_model = copy.deepcopy(self.net)
+        pre_trained_layers = self.pre_trained_module_leaves()
+        for name, layers in pre_trained_layers:
+            copied_model.__setattr__(name, layers)
+        self.model_list[model_name] = copied_model
 
     def forward(self, data: torch.Tensor) -> Any:
         return self.net(data)
@@ -246,6 +336,8 @@ class Model(ModelModule):
 
     def model_state(self) -> Dict:
         decomposed_layers = self.decomposed_module_leaves()
+        pre_trained_layers = self.pre_trained_module_leaves()
+
         shared_weights = {
             f'{name}.sw': layer.sw.clone().detach() \
             for name, layer in decomposed_layers \
@@ -276,10 +368,10 @@ class Model(ModelModule):
             for name, layer in decomposed_layers \
             if layer.aw_kb is not None
         }
-        bn_weight = {
-            name: param.clone().detach() \
-            for name, param in self.net.state_dict().items() \
-            if 'bn' in name or 'bottleneck' in name or 'downsample' in name
+        pre_trained_weights = {
+            f'{l_name}.{p_name}': params.clone().detach()
+            for l_name, layer in pre_trained_layers \
+            for p_name, params in layer.state_dict().items()
         }
 
         return {
@@ -289,7 +381,7 @@ class Model(ModelModule):
             'bias': bias_weights,
             'atten': atten_weights,
             'aw_kb': kb_weights,
-            'bn': bn_weight
+            'pre_trained_weights': pre_trained_weights,
         }
 
     def update_model(self, params_state: Dict[str, torch.Tensor]):
@@ -336,11 +428,11 @@ class Model(ModelModule):
                     for n, p in params_state['aw_kb'].items()
                 }
 
-            bn_weights = {}
-            if 'bn' in params_state.keys():
-                bn_weights = {
+            pre_trained_weights = {}
+            if 'pre_trained_weights' in params_state.keys():
+                pre_trained_weights = {
                     n: p.clone().detach() \
-                    for n, p in params_state['bn'].items()
+                    for n, p in params_state['pre_trained_weights'].items()
                 }
 
             model_params = {
@@ -350,7 +442,7 @@ class Model(ModelModule):
                 **bias_weights,
                 **atten_weights,
                 **kb_weights,
-                **bn_weights,
+                **pre_trained_weights,
             }
 
             model_dict = self.net.state_dict()
@@ -364,13 +456,13 @@ class Operator(OperatorModule):
     def set_optimizer_parameters(self, model: Model):
         optimizer_param_factory = {n: p for n, p in self.optimizer.defaults.items()}
 
-        params = {}
+        params = []
         for name, param in model.net.named_parameters():
             if param.requires_grad:
-                params[name] = param
+                params.append(param)
 
         self.optimizer.param_groups = [{
-            'params': params.values(),
+            'params': params,
             **optimizer_param_factory
         }]
 
@@ -615,7 +707,6 @@ class Client(ClientModule):
             f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
             for name, layer in incremental_decomposed_layers
         }
-
         return {
             'train_cnt': self.train_cnt,
             'increment_aw': incremental_adaptive_weights,
@@ -624,6 +715,7 @@ class Client(ClientModule):
 
     def get_integrated_state(self, **kwargs) -> Dict:
         integrated_decomposed_layers = self.model.decomposed_module_leaves()
+        pre_trained_layers = self.model.fine_tuning_module_leaves()
         integrated_adaptive_weights = {
             f'{name}.aw': layer.aw.clone().detach() \
             for name, layer in integrated_decomposed_layers
@@ -632,17 +724,22 @@ class Client(ClientModule):
             f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
             for name, layer in integrated_decomposed_layers
         }
-
+        pre_trained_weights = {
+            f'{l_name}.{p_name}': params.clone().detach()
+            for l_name, layer in pre_trained_layers \
+            for p_name, params in layer.state_dict().items()
+        }
         return {
             'train_cnt': self.train_cnt,
             'integrated_aw': integrated_adaptive_weights,
             'integrated_gw': integrated_global_weights,
+            'pre_trained_weights': pre_trained_weights,
         }
 
     def update_by_incremental_state(self, state: Dict, **kwargs) -> Any:
         model_params = {
             'sw': state['incremental_base_weights'],
-            'aw_kb': state['incremental_knowledge_base']
+            'aw_kb': state['incremental_knowledge_base'],
         }
 
         if self.current_task:
@@ -653,7 +750,8 @@ class Client(ClientModule):
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
         model_params = {
             'sw': state['integrated_base_weights'],
-            'aw_kb': state['integrated_knowledge_base']
+            'aw_kb': state['integrated_knowledge_base'],
+            'pre_trained_weights': state['pre_trained_weights'],
         }
 
         if self.current_task:
@@ -839,33 +937,16 @@ class Server(ServerModule):
             self.logger.info(f'Collect integrated state successfully from client {client_name}.')
 
     def get_dispatch_incremental_state(self, client_name: str) -> Dict:
-        incremental_decomposed_layers = self.model.decomposed_module_leaves()
-        incremental_global_weights = {
-            f'{name}.sw': layer.sw.clone().detach() \
-            for name, layer in incremental_decomposed_layers
-        }
-        incremental_knowledge_base = {
-            f'{name}.aw_kb': layer.aw_kb.clone().detach() \
-            for name, layer in incremental_decomposed_layers
-        }
-
+        model_state = self.model.model_state()
         return {
-            'incremental_base_weights': incremental_global_weights,
-            'incremental_knowledge_base': incremental_knowledge_base,
+            'incremental_base_weights': model_state['sw'],
+            'incremental_knowledge_base': model_state['aw_kb'],
         }
 
     def get_dispatch_integrated_state(self, client_name: str) -> Dict:
-        integrated_decomposed_layers = self.model.decomposed_module_leaves()
-        integrated_global_weights = {
-            f'{name}.sw': layer.sw.clone().detach() \
-            for name, layer in integrated_decomposed_layers
-        }
-        integrated_knowledge_base = {
-            f'{name}.aw_kb': layer.aw_kb.clone().detach() \
-            for name, layer in integrated_decomposed_layers
-        }
-
+        model_state = self.model.model_state()
         return {
-            'integrated_base_weights': integrated_global_weights,
-            'integrated_knowledge_base': integrated_knowledge_base,
+            'pre_trained_weights': model_state['pre_trained_weights'],
+            'integrated_base_weights': model_state['sw'],
+            'integrated_knowledge_base': model_state['aw_kb'],
         }
