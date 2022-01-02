@@ -379,7 +379,7 @@ class Model(ModelModule):
                for name, layer in decomposed_layers \
                if isinstance(layer, DecomposedBatchNorm) and layer.num_batches_tracked is not None},
         }
-        pre_trained_weights = {
+        pre_trained_params = {
             f'{l_name}.{p_name}': params.clone().detach()
             for l_name, layer in pre_trained_layers \
             for p_name, params in layer.state_dict().items()
@@ -392,8 +392,8 @@ class Model(ModelModule):
             'bias': bias_weights,
             'atten': atten_weights,
             'aw_kb': kb_weights,
-            'bn': bn_params,
-            'pre_trained_weights': pre_trained_weights,
+            'bn_params': bn_params,
+            'pre_trained_params': pre_trained_params,
         }
 
     def update_model(self, params_state: Dict[str, torch.Tensor]):
@@ -441,17 +441,17 @@ class Model(ModelModule):
                 }
 
             bn_params = {}
-            if 'bn' in params_state.keys():
+            if 'bn_params' in params_state.keys():
                 bn_params = {
                     n: p.clone().detach() \
-                    for n, p in params_state['bn'].items()
+                    for n, p in params_state['bn_params'].items()
                 }
 
-            pre_trained_weights = {}
-            if 'pre_trained_weights' in params_state.keys():
-                pre_trained_weights = {
+            pre_trained_params = {}
+            if 'pre_trained_params' in params_state.keys():
+                pre_trained_params = {
                     n: p.clone().detach() \
-                    for n, p in params_state['pre_trained_weights'].items()
+                    for n, p in params_state['pre_trained_params'].items()
                 }
 
             model_params = {
@@ -462,7 +462,7 @@ class Model(ModelModule):
                 **atten_weights,
                 **kb_weights,
                 **bn_params,
-                **pre_trained_weights,
+                **pre_trained_params,
             }
 
             model_dict = self.net.state_dict()
@@ -729,13 +729,12 @@ class Client(ClientModule):
         }
         return {
             'train_cnt': self.train_cnt,
-            'increment_aw': incremental_adaptive_weights,
-            'increment_gw': incremental_global_weights,
+            'incremental_aw': incremental_adaptive_weights,
+            'incremental_gw': incremental_global_weights,
         }
 
     def get_integrated_state(self, **kwargs) -> Dict:
         integrated_decomposed_layers = self.model.decomposed_module_leaves()
-        pre_trained_layers = self.model.fine_tuning_module_leaves()
         integrated_adaptive_weights = {
             f'{name}.aw': layer.aw.clone().detach() \
             for name, layer in integrated_decomposed_layers
@@ -744,23 +743,18 @@ class Client(ClientModule):
             f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
             for name, layer in integrated_decomposed_layers
         }
-        pre_trained_weights = {
-            f'{l_name}.{p_name}': params.clone().detach()
-            for l_name, layer in pre_trained_layers \
-            for p_name, params in layer.state_dict().items()
-        }
         return {
             'train_cnt': self.train_cnt,
             'integrated_aw': integrated_adaptive_weights,
             'integrated_gw': integrated_global_weights,
-            'integrated_bn': None,
-            'pre_trained_weights': pre_trained_weights,
+            'integrated_bn': self.model.model_state()['bn_params'],
+            'pre_trained_params': self.model.model_state()['pre_trained_params'],
         }
 
     def update_by_incremental_state(self, state: Dict, **kwargs) -> Any:
         model_params = {
-            'sw': state['incremental_base_weights'],
-            'aw_kb': state['incremental_knowledge_base'],
+            'sw': state['incremental_sw'],
+            'aw_kb': state['incremental_aw_kb'],
         }
 
         if self.current_task:
@@ -770,9 +764,10 @@ class Client(ClientModule):
 
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
         model_params = {
-            'sw': state['integrated_base_weights'],
-            'aw_kb': state['integrated_knowledge_base'],
-            'pre_trained_weights': state['pre_trained_weights'],
+            'sw': state['integrated_sw'],
+            'aw_kb': state['integrated_aw_kb'],
+            'bn_params': state['integrated_bn'],
+            'pre_trained_params': state['pre_trained_params'],
         }
 
         if self.current_task:
@@ -910,28 +905,28 @@ class Server(ServerModule):
         self.client_aw = []
 
     def calculate(self) -> Any:
-        merge_increment_params = {}
+        merge_incremental_params = {}
 
         # calculate global weight
         train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
         for cname, cstate in self.clients.items():
-            k, global_weight = cstate['train_cnt'], cstate['increment_gw']
+            k, global_weight = cstate['train_cnt'], cstate['incremental_gw']
             global_weight = {
                 n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
                 for n, p in global_weight.items()
             }
             for n, p in global_weight.items():
-                if n not in merge_increment_params.keys():
-                    merge_increment_params[n] = torch.zeros_like(p)
-                merge_increment_params[n] += p.clone().detach()
+                if n not in merge_incremental_params.keys():
+                    merge_incremental_params[n] = torch.zeros_like(p)
+                merge_incremental_params[n] += p.clone().detach()
 
         # calculate knowledge base
-        self.client_aw = []  # delete this line if you need sample adaptive weight randomly as paper mentioned
-        self.client_aw.extend([params['increment_aw'] for _, params in self.clients.items()])
+        self.client_aw = []  # delete this line when need sample adaptive weight randomly as paper mentioned
+        self.client_aw.extend([params['incremental_aw'] for _, params in self.clients.items()])
         if len(self.client_aw) >= self.model.kb_cnt:
             client_adaptive_weights = random.sample(self.client_aw, self.model.kb_cnt)
             for name, _ in client_adaptive_weights[0].items():
-                merge_increment_params[f'{name}_kb'] = torch.cat(
+                merge_incremental_params[f'{name}_kb'] = torch.cat(
                     tensors=[aw[name].reshape(list(aw[name].shape) + [1]) \
                              for aw in client_adaptive_weights],
                     dim=-1
@@ -939,7 +934,7 @@ class Server(ServerModule):
 
         # load state for server model
         model_dict = self.model.net.state_dict()
-        for i, (n, p) in enumerate(merge_increment_params.items()):
+        for i, (n, p) in enumerate(merge_incremental_params.items()):
             model_dict[n] = p.clone()
         self.model.net.load_state_dict(model_dict)
 
@@ -960,14 +955,15 @@ class Server(ServerModule):
     def get_dispatch_incremental_state(self, client_name: str) -> Dict:
         model_state = self.model.model_state()
         return {
-            'incremental_base_weights': model_state['sw'],
-            'incremental_knowledge_base': model_state['aw_kb'],
+            'incremental_sw': model_state['sw'],
+            'incremental_aw_kb': model_state['aw_kb'],
         }
 
     def get_dispatch_integrated_state(self, client_name: str) -> Dict:
         model_state = self.model.model_state()
         return {
-            'pre_trained_weights': model_state['pre_trained_weights'],
-            'integrated_base_weights': model_state['sw'],
-            'integrated_knowledge_base': model_state['aw_kb'],
+            'integrated_sw': model_state['sw'],
+            'integrated_aw_kb': model_state['aw_kb'],
+            'integrated_bn': model_state['bn_params'],
+            'pre_trained_params': model_state['pre_trained_params'],
         }
