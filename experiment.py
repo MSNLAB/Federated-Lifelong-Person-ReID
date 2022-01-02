@@ -108,12 +108,10 @@ class ExperimentStage(object):
         self.container = VirtualContainer(self.common_config['device'], self.common_config['parallel'])
 
     def __enter__(self):
-        clear_cache()
         self.check_environment()
         return self
 
     def __exit__(self, type, value, trace):
-        clear_cache()
         if type is not None and issubclass(type, Exception):
             self.logger.error(value)
             raise trace
@@ -237,7 +235,6 @@ class ExperimentStage(object):
                 task_pipeline = client.task_pipeline
                 task = task_pipeline.next_task()
                 if task['tr_epochs'] != 0:
-                    clear_cache()
                     tr_output = client.train(
                         epochs=task['tr_epochs'],
                         task_name=task['task_name'],
@@ -252,6 +249,8 @@ class ExperimentStage(object):
             except Exception as ex:
                 client.logger.error(ex)
                 raise ex
+            finally:
+                clear_cache()
 
     @staticmethod
     def _process_val(client, log, curr_round, container):
@@ -259,7 +258,6 @@ class ExperimentStage(object):
             try:
                 task_pipeline = client.task_pipeline
                 for tid in range(len(task_pipeline.task_list)):
-                    clear_cache()
                     task = task_pipeline.get_task(tid)
                     cmc, mAP, avg_rep = client.validate(
                         task_name=task['task_name'],
@@ -278,3 +276,5 @@ class ExperimentStage(object):
             except Exception as ex:
                 client.logger.error(ex)
                 raise ex
+            finally:
+                clear_cache()
