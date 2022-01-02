@@ -229,7 +229,7 @@ class Model(ModelModule):
         self.lambda_mask = lambda_mask
         self.kb_cnt = kb_cnt
         self.args = kwargs
-        self.model_list = {}
+        self.net_list = {}
         self.layer_convert(self.net)
 
     def layer_convert(self, net):
@@ -313,11 +313,11 @@ class Model(ModelModule):
                 if type(module) in self._module_transform_lut.values()]
 
     def remember_params(self, model_name: str):
-        copied_model = copy.deepcopy(self.net)
+        copied_net = copy.deepcopy(self.net)
         pre_trained_layers = self.pre_trained_module_leaves()
         for name, layers in pre_trained_layers:
-            copied_model.__setattr__(name, layers)
-        self.model_list[model_name] = copied_model
+            copied_net.__setattr__(name, layers)
+        self.net_list[model_name] = copied_net
 
     def forward(self, data: torch.Tensor) -> Any:
         return self.net(data)
@@ -475,16 +475,8 @@ class Operator(OperatorModule):
 
     def set_optimizer_parameters(self, model: Model):
         optimizer_param_factory = {n: p for n, p in self.optimizer.defaults.items()}
-
-        params = []
-        for name, param in model.net.named_parameters():
-            if param.requires_grad:
-                params.append(param)
-
-        self.optimizer.param_groups = [{
-            'params': params,
-            **optimizer_param_factory
-        }]
+        params = [p for p in model.net.parameters() if p.requires_grad]
+        self.optimizer.param_groups = [{'params': params, **optimizer_param_factory}]
 
     def invoke_train(
             self,
@@ -545,7 +537,7 @@ class Operator(OperatorModule):
         sparseness = approx_loss = 0.0
         for name, module in d_layers:
             sparseness += torch.abs(module.aw).sum() + torch.abs(module.mask).sum()
-            for _, pre_model in model.model_list.items():
+            for _, pre_model in model.net_list.items():
                 approx_loss += l2_loss(
                     (module.sw - model.net.get_submodule(name).sw) * module.mask + \
                     (module.aw - model.net.get_submodule(name).aw)
