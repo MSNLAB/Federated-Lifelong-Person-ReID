@@ -731,6 +731,7 @@ class Client(ClientModule):
             'train_cnt': self.train_cnt,
             'incremental_aw': incremental_adaptive_weights,
             'incremental_gw': incremental_global_weights,
+            'incremental_bn': self.model.model_state()['bn_params'],
         }
 
     def get_integrated_state(self, **kwargs) -> Dict:
@@ -907,15 +908,15 @@ class Server(ServerModule):
     def calculate(self) -> Any:
         merge_incremental_params = {}
 
-        # calculate global weight
+        # calculate global weight and batch norm
         train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
         for cname, cstate in self.clients.items():
-            k, global_weight = cstate['train_cnt'], cstate['incremental_gw']
-            global_weight = {
+            k, params = cstate['train_cnt'], {**cstate['incremental_gw'], **cstate['incremental_bn']}
+            params = {
                 n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
-                for n, p in global_weight.items()
+                for n, p in params.items()
             }
-            for n, p in global_weight.items():
+            for n, p in params.items():
                 if n not in merge_incremental_params.keys():
                     merge_incremental_params[n] = torch.zeros_like(p)
                 merge_incremental_params[n] += p.clone().detach()
