@@ -16,7 +16,7 @@ from modules.client import ClientModule
 from modules.model import ModelModule
 from modules.operator import OperatorModule
 from modules.server import ServerModule
-from tools.distance import compute_cosine_distance
+from tools.distance import compute_euclidean_distance
 from tools.evaluate import calculate_similarity_distance, evaluate
 from tools.utils import torch_device, model_on_device, ModulePathTracer
 
@@ -955,15 +955,17 @@ class Server(ServerModule):
         select_client, token_distance = [], []
 
         for c_name, c_tokens in self.token_memory.items():
-            if c_name != client_name:
-                dis = 0.0
-                for fall_cnt, other_token in enumerate(c_tokens[::-1], 1):
-                    _dis = compute_cosine_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
-                    dis += math.pow(_dis, 1.0)
-                select_client.append(c_name)
-                token_distance.append(1.0 / dis)
+            # if c_name != client_name:
+            dis = 0.0
+            for fall_cnt, other_token in enumerate(c_tokens[::-1], 1):
+                _dis = compute_euclidean_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
+                dis += math.pow(_dis, 1.0)
+            select_client.append(c_name)
+            token_distance.append(1.0 / dis)
 
-        token_distance = (torch.nn.functional.softmax(torch.Tensor(token_distance), dim=0)).tolist()
+        token_distance = torch.nn.functional.normalize(torch.Tensor(token_distance), dim=0)
+        token_distance = torch.nn.functional.softmax(token_distance, dim=0)
+        token_distance = token_distance.tolist()
 
         merge_incremental_params = {}
         for c_name, dis in zip(select_client, token_distance):
