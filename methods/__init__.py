@@ -1,4 +1,4 @@
-from methods import baseline, ewc, mas, fedavg, fedprox, fedcurv, fedweit, ours
+from methods import baseline, ewc, mas, fedavg, fedprox, fedcurv, fedweit, fedstil
 
 methods = {
     'baseline': baseline,
@@ -8,5 +8,5 @@ methods = {
     'fedprox': fedprox,
     'fedcurv': fedcurv,
     'fedweit': fedweit,
-    'ours': ours,
+    'fedstil': fedstil,
 }
