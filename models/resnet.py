@@ -312,7 +312,7 @@ class ResNet_ReID(nn.Module):
         global_feat = self.gap(self.base(x))
         global_feat = global_feat.view(global_feat.shape[0], -1)
 
-        if self.neck == 'bnneck' and len(x) > 1:
+        if self.neck == 'bnneck':
             feat = self.bottleneck(global_feat)  # normalize for angular softmax
         else:
             feat = global_feat

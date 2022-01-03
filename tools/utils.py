@@ -1,10 +1,11 @@
 import gc
 import os
 import random
-from typing import Dict, List, Tuple, Set, Union
+from typing import Dict, List, Tuple, Set, Union, Any, Optional, Callable
 
 import numpy as np
 import torch
+import torch.fx as fx
 import torch.nn as nn
 
 
@@ -118,3 +119,49 @@ class model_on_device(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.model.cpu()
+
+
+class ModulePathTracer(torch.fx.Tracer):
+    """
+    ModulePathTracer is an FX tracer that--for each operation--also records
+    the qualified name of the Module from which the operation originated.
+    """
+
+    # The current qualified name of the Module being traced. The top-level
+    # module is signified by empty string. This is updated when entering
+    # call_module and restored when exiting call_module
+    current_module_qualified_name: str = ''
+    # A map from FX Node to the qualname of the Module from which it
+    # originated. This is recorded by `create_proxy` when recording an
+    # operation
+    node_to_originating_module: Dict[torch.fx.Node, str] = {}
+
+    def call_module(self, m: torch.nn.Module, forward: Callable[..., Any],
+                    args: Tuple[Any, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Override of Tracer.call_module (see
+        https://pytorch.org/docs/stable/fx.html#torch.fx.Tracer.call_module).
+        This override:
+        1) Stores away the qualified name of the caller for restoration later
+        2) Installs the qualified name of the caller in `current_module_qualified_name`
+           for retrieval by `create_proxy`
+        3) Delegates into the normal Tracer.call_module method
+        4) Restores the caller's qualified name into current_module_qualified_name
+        """
+        old_qualname = self.current_module_qualified_name
+        try:
+            self.current_module_qualified_name = self.path_of_module(m)
+            return super().call_module(m, forward, args, kwargs)
+        finally:
+            self.current_module_qualified_name = old_qualname
+
+    def create_proxy(self, kind: str, target: torch.fx.node.Target, args: Tuple[Any, ...],
+                     kwargs: Dict[str, Any], name: Optional[str] = None, type_expr: Optional[Any] = None):
+        """
+        Override of `Tracer.create_proxy`. This override intercepts the recording
+        of every operation and stores away the current traced module's qualified
+        name in `node_to_originating_module`
+        """
+        proxy = super().create_proxy(kind, target, args, kwargs, name, type_expr)
+        self.node_to_originating_module[proxy.node] = self.current_module_qualified_name
+        return proxy
