@@ -954,13 +954,16 @@ class Server(ServerModule):
         select_client, token_distance = [], []
 
         for c_name, c_tokens in self.token_memory.items():
-            # if c_name != client_name:
-            dis = 1e-8
-            for fall_cnt, other_token in enumerate(c_tokens[::-1], 1):
-                _dis = compute_euclidean_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
-                dis += math.pow(_dis, 1.0)
-            select_client.append(c_name)
-            token_distance.append(1.0 / dis)
+            if c_name != client_name:
+                dis = 1e-8
+                for fall_cnt, other_token in enumerate(c_tokens[::-1], 1):
+                    _dis = compute_euclidean_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
+                    dis += math.pow(_dis, 1.0)
+                select_client.append(c_name)
+                token_distance.append(1.0 / dis)
+
+        select_client.append(client_name)
+        token_distance.append(sum(token_distance) / len(token_distance))
 
         token_distance = torch.nn.functional.normalize(torch.Tensor(token_distance), dim=0)
         token_distance = torch.nn.functional.softmax(token_distance, dim=0)
@@ -968,6 +971,7 @@ class Server(ServerModule):
 
         merge_incremental_params = {}
         for c_name, dis in zip(select_client, token_distance):
+            self.logger.info(f'Relevant ratio between {client_name} and {c_name}: {dis:.4f}')
             client_state = self.clients[c_name]
             params = {**client_state['incremental_sw'], **client_state['incremental_bn']}
             params = {
