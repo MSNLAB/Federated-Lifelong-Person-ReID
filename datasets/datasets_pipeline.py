@@ -33,9 +33,12 @@ class ReIDTaskPipeline(object):
             mean=self.task_opts['augment_opts']['norm_mean'],
             std=self.task_opts['augment_opts']['norm_std']
         )
+
+        tr_dataset = ReIDImageDataset(os.path.join(task_paths, 'train'), tr_augmentation)
         tr_loader = DataLoader(
-            ReIDImageDataset(os.path.join(task_paths, 'train'), tr_augmentation),
+            dataset=tr_dataset,
             shuffle=True,
+            drop_last=len(tr_dataset) % self.task_opts['loader_opts']['batch_size'] == 1,
             batch_size=self.task_opts['loader_opts']['batch_size'],
             num_workers=self.task_opts['loader_opts']['num_workers'],
             pin_memory=self.task_opts['loader_opts']['pin_memory'],
@@ -43,9 +46,11 @@ class ReIDTaskPipeline(object):
             multiprocessing_context=self.task_opts['loader_opts']['multiprocessing_context'],
         )
 
+        query_dataset = ReIDImageDataset(os.path.join(task_paths, 'query'), none_augmentation)
         query_loader = DataLoader(
-            ReIDImageDataset(os.path.join(task_paths, 'query'), none_augmentation),
+            dataset=query_dataset,
             shuffle=False,
+            drop_last=len(query_dataset) % self.task_opts['loader_opts']['batch_size'] == 1,
             batch_size=self.task_opts['loader_opts']['batch_size'],
             num_workers=self.task_opts['loader_opts']['num_workers'],
             pin_memory=self.task_opts['loader_opts']['pin_memory'],
@@ -53,9 +58,11 @@ class ReIDTaskPipeline(object):
             multiprocessing_context=self.task_opts['loader_opts']['multiprocessing_context'],
         )
 
+        gallery_dataset = ReIDImageDataset(os.path.join(task_paths, 'gallery'), none_augmentation)
         gallery_loader = DataLoader(
-            ReIDImageDataset(os.path.join(task_paths, 'gallery'), none_augmentation),
+            dataset=gallery_dataset,
             shuffle=False,
+            drop_last=len(gallery_dataset) % self.task_opts['loader_opts']['batch_size'] == 1,
             batch_size=self.task_opts['loader_opts']['batch_size'],
             num_workers=self.task_opts['loader_opts']['num_workers'],
             pin_memory=self.task_opts['loader_opts']['pin_memory'],

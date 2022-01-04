@@ -470,13 +470,12 @@ class Operator(OperatorModule):
                 pre_model = model.old_net
                 kd_loss = DistillKL(2.0)
                 pre_model.train()
-                with model_on_device(pre_model, device):
-                    with torch.no_grad():
-                        pre_output = self._invoke_predict(pre_model, data, target, **kwargs)
-                    pre_score, pre_feature = pre_output['score'], pre_output['feature']
-                    loss += kd_loss(feature, pre_feature.clone().detach()) * model.lambda_kd
-                    # loss += kd_loss(F.normalize(feature), F.normalize(pre_feature.clone().detach())) \
-                    #         * model.lambda_kd
+                with torch.no_grad():
+                    pre_output = self._invoke_predict(pre_model, data, target, **kwargs)
+                pre_score, pre_feature = pre_output['score'], pre_output['feature']
+                loss += kd_loss(feature, pre_feature.clone().detach()) * model.lambda_kd
+                # loss += kd_loss(F.normalize(feature), F.normalize(pre_feature.clone().detach())) \
+                #         * model.lambda_kd
 
             # l1 loss to make adaptive weight sparse
             adaptive_layers = model.adaptive_module_leaves()
@@ -956,7 +955,7 @@ class Server(ServerModule):
 
         for c_name, c_tokens in self.token_memory.items():
             # if c_name != client_name:
-            dis = 0.0
+            dis = 1e-8
             for fall_cnt, other_token in enumerate(c_tokens[::-1], 1):
                 _dis = compute_euclidean_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
                 dis += math.pow(_dis, 1.0)
