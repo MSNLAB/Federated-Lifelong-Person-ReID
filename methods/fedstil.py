@@ -892,10 +892,14 @@ class Server(ServerModule):
             model: nn.Module,
             operator: OperatorModule,
             ckpt_root: str,
+            distance_calculate_step: int = 10,
+            distance_calculate_decay: int = 0.8,
             **kwargs
     ):
         super().__init__(server_name, model, operator, ckpt_root, **kwargs)
         self.token_memory = {}
+        self.distance_calculate_step = distance_calculate_step
+        self.distance_calculate_decay = distance_calculate_decay
 
     def update_model(self, params_state: Dict[str, torch.Tensor]):
         self.model.update_model(params_state)
@@ -956,9 +960,9 @@ class Server(ServerModule):
         for c_name, c_tokens in self.token_memory.items():
             if c_name != client_name:
                 dis = 1e-8
-                for fall_cnt, other_token in enumerate(c_tokens[::-1], 1):
+                for decay_cnt, other_token in enumerate(c_tokens[::-1 * self.distance_calculate_step], 0):
                     _dis = compute_euclidean_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
-                    dis += math.pow(_dis, 1.0)
+                    dis += _dis / math.pow(self.distance_calculate_decay, decay_cnt)
                 select_client.append(c_name)
                 token_distance.append(1.0 / dis)
 

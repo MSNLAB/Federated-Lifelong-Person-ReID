@@ -16,9 +16,12 @@ model_opts:
 
 server:
   server_name: server
+  distance_calculate_step: 10
+  distance_calculate_decay: 0.8
 
 clients:
   - client_name: client-0
+    model_ckpt_name: fedstil_model
     tasks:
       - task-0-0
       - task-0-1
@@ -30,6 +33,7 @@ clients:
       - task-0-7
 
   - client_name: client-1
+    model_ckpt_name: fedstil_model
     tasks:
       - task-1-0
       - task-1-1
@@ -41,6 +45,7 @@ clients:
       - task-1-7
 
   - client_name: client-2
+    model_ckpt_name: fedstil_model
     tasks:
       - task-2-0
       - task-2-1
@@ -52,6 +57,7 @@ clients:
       - task-2-7
 
   - client_name: client-3
+    model_ckpt_name: fedstil_model
     tasks:
       - task-3-0
       - task-3-1
@@ -63,6 +69,7 @@ clients:
       - task-3-7
 
   - client_name: client-4
+    model_ckpt_name: fedstil_model
     tasks:
       - task-4-0
       - task-4-1
