@@ -203,13 +203,13 @@ class Model(ModelModule):
         self.args = kwargs
         self.old_net = None
 
-        self.layer_convert(self.net)
+        self.layer_convert(self.net.base)
 
         tracer = ModulePathTracer()
-        for node in tracer.trace(self.net).nodes:
+        for node in tracer.trace(self.net.base).nodes:
             module_name = tracer.node_to_originating_module.get(node)
             if module_name is not None:
-                module = self.net.get_submodule(module_name)
+                module = self.net.base.get_submodule(module_name)
                 if isinstance(module, AdaptiveLayer):
                     self.head_adaptive_layer = module
                     self.head_adaptive_layer.input_features = []
@@ -346,6 +346,10 @@ class Model(ModelModule):
                for name, layer in adaptive_layers \
                if isinstance(layer, AdaptiveBatchNorm) and layer.running_mean is not None},
         }
+        classifier_params = {
+            f'classifier.{name}': param.clone().detach() \
+            for name, param in self.net.classifier.state_dict().items()
+        }
         pre_trained_params = {
             f'{l_name}.{p_name}': params.clone().detach() \
             for l_name, layer in self.pre_trained_module_leaves() \
@@ -363,6 +367,7 @@ class Model(ModelModule):
             'adaptive_weights': adaptive_weights,
             'adaptive_bias': adaptive_bias,
             'bn_params': bn_params,
+            'classifier_params': classifier_params,
             'pre_trained_params': pre_trained_params,
             'old_net_params': old_net_params,
         }
@@ -403,6 +408,13 @@ class Model(ModelModule):
                 for n, p in params_state['bn_params'].items()
             }
 
+        classifier_params = {}
+        if 'classifier_params' in params_state.keys():
+            classifier_params = {
+                n: p.clone().detach() \
+                for n, p in params_state['classifier_params'].items()
+            }
+
         pre_trained_params = {}
         if 'pre_trained_params' in params_state.keys():
             pre_trained_params = {
@@ -423,6 +435,7 @@ class Model(ModelModule):
             **adaptive_weights,
             **adaptive_bias,
             **bn_params,
+            **classifier_params,
             **pre_trained_params,
             **old_net_params,
         }
@@ -691,6 +704,8 @@ class Client(ClientModule):
 
     def get_incremental_state(self, **kwargs) -> Dict:
         adaptive_layers = self.model.adaptive_module_leaves()
+        model_state = self.model.model_state()
+
         incremental_shared_weights = {
             f'{name}.global_weight': (layer.global_weight_atten * layer.global_weight
                                       + layer.adaptive_weight).clone().detach() \
@@ -700,11 +715,13 @@ class Client(ClientModule):
             'train_cnt': self.train_cnt,
             'task_token': self.task_token,
             'incremental_sw': incremental_shared_weights,
-            'incremental_bn': self.model.model_state()['bn_params'],
+            'incremental_bn': model_state['bn_params'],
+            'incremental_classifier': model_state['classifier_params'],
         }
 
     def get_integrated_state(self, **kwargs) -> Dict:
         adaptive_layers = self.model.adaptive_module_leaves()
+        model_state = self.model.model_state()
         integrated_shared_weights = {
             f'{name}.sw': (layer.global_weight_atten * layer.global_weight
                            + layer.adaptive_weight).clone().detach() \
@@ -714,14 +731,13 @@ class Client(ClientModule):
             'train_cnt': self.train_cnt,
             'task_token': self.task_token,
             'integrated_sw': integrated_shared_weights,
-            'integrated_bn': self.model.model_state()['bn_params'],
-            'pre_trained_params': self.model.model_state()['pre_trained_params'],
+            'integrated_bn': model_state['bn_params'],
+            'integrated_classifier': model_state['classifier_params'],
+            'pre_trained_params': model_state['pre_trained_params'],
         }
 
     def update_by_incremental_state(self, state: Dict, **kwargs) -> Any:
-        model_params = {
-            'global_weight': state['incremental_global_weight'],
-        }
+        model_params = {'global_weight': state['incremental_shared_params']}
 
         if self.current_task:
             if self.model_ckpt_name:
@@ -738,7 +754,8 @@ class Client(ClientModule):
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
         model_params = {
             'global_weight': state['integrated_global_weight'],
-            'bn_weight': state['integrated_bn_params'],
+            'bn_params': state['integrated_bn_params'],
+            'classifier_params': state['integrated_classifier_params'],
             'pre_trained_params': state['integrated_pre_trained_params'],
         }
 
@@ -918,7 +935,11 @@ class Server(ServerModule):
         train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
 
         for cname, cstate in self.clients.items():
-            k, params = cstate['train_cnt'], {**cstate['incremental_sw'], **cstate['incremental_bn']}
+            k, params = cstate['train_cnt'], {
+                **cstate['incremental_sw'],
+                **cstate['incremental_bn'],
+                **cstate['incremental_classifier'],
+            }
             params = {
                 n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
                 for n, p in params.items()
@@ -977,7 +998,11 @@ class Server(ServerModule):
         for c_name, dis in zip(select_client, token_distance):
             self.logger.info(f'Relevant ratio between {client_name} and {c_name}: {dis:.4f}')
             client_state = self.clients[c_name]
-            params = {**client_state['incremental_sw'], **client_state['incremental_bn']}
+            params = {
+                **client_state['incremental_sw'],
+                **client_state['incremental_bn'],
+                **client_state['incremental_classifier'],
+            }
             params = {
                 n: (p.clone().detach() * dis).type(dtype=p.dtype) \
                 for n, p in params.items()
@@ -988,7 +1013,7 @@ class Server(ServerModule):
                 merge_incremental_params[n] += p.clone().detach()
 
         return {
-            'incremental_global_weight': merge_incremental_params,
+            'incremental_shared_params': merge_incremental_params,
         }
 
     def get_dispatch_integrated_state(self, client_name: str) -> Dict:
@@ -996,5 +1021,6 @@ class Server(ServerModule):
         return {
             'integrated_global_weight': model_state['global_weight'],
             'integrated_bn_params': model_state['bn_params'],
+            'integrated_classifier_params': model_state['classifier_params'],
             'integrated_pre_trained_params': model_state['pre_trained_params'],
         }

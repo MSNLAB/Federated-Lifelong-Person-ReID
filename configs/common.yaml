@@ -50,7 +50,7 @@ defaults:
       norm_std: [ 0.229, 0.224, 0.225 ]
     loader_opts:
       batch_size: 64
-      num_workers: 2
+      num_workers: 4
       pin_memory: true
       persistent_workers: true
       multiprocessing_context: spawn
