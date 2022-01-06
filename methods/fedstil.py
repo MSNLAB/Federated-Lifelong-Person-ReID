@@ -1,7 +1,6 @@
 import collections
 import copy
 import math
-from math import e
 from queue import Queue
 from typing import Any, Dict, Union, List, Optional
 
@@ -33,43 +32,51 @@ class AdaptiveLayer(nn.Module):
     ):
         super(AdaptiveLayer, self).__init__()
 
-        self.global_weight = Parameter(global_weight)
-        self.global_weight.requires_grad = False
+        self.global_weight = Parameter()
+        self.global_weight_atten = Parameter()
+        self.adaptive_weight = Parameter()
+        self.adaptive_bias = Parameter() if adaptive_bias else None
 
-        self.adaptive_bias = None
-        if adaptive_bias is not None:
-            self.adaptive_bias = Parameter(adaptive_bias)
-            self.adaptive_bias.requires_grad = True
+        self.initial_global_weight_atten = Parameter()
+        self.initial_adaptive_weight = Parameter()
 
-        self.global_weight_atten = None
-        self.adaptive_weight = None
-
-        self.init_training_weights(global_weight_atten, adaptive_weight)
+        self.init_training_weights(
+            global_weight,
+            global_weight_atten,
+            adaptive_weight,
+            adaptive_bias
+        )
 
     def init_training_weights(
             self,
+            global_weight=None,
             global_weight_atten=None,
-            adaptive_weight=None
+            adaptive_weight=None,
+            adaptive_bias=None,
     ) -> None:
+        if global_weight is None:
+            global_weight = self.global_weight.data
+        self.global_weight.data = global_weight
+        self.global_weight.requires_grad = False
+
         if global_weight_atten is None:
-            global_weight_atten = torch.ones(self.global_weight.shape[-1])
-            global_weight_atten = torch.sigmoid(global_weight_atten * e)
+            global_weight_atten = torch.ones(self.global_weight.data.shape[-1]) * 0.8
+        self.global_weight_atten.data = global_weight_atten
+        self.initial_global_weight_atten.data = global_weight_atten.clone().detach()
+        self.global_weight_atten.requires_grad = True
 
         if adaptive_weight is None:
-            adaptive_weight = self.global_weight.data.clone().detach()
-            adaptive_weight = (1 - global_weight_atten.data) * adaptive_weight
+            adaptive_weight = (1.0 - global_weight_atten.clone().detach()) \
+                              * (global_weight.clone().detach())
+        self.adaptive_weight.data = adaptive_weight
+        self.initial_adaptive_weight.data = adaptive_weight.clone().detach()
+        self.adaptive_weight.requires_grad = True
 
-        if self.global_weight_atten is None:
-            self.global_weight_atten = Parameter(global_weight_atten)
-            self.global_weight_atten.requires_grad = True
-        else:
-            self.global_weight_atten.data = global_weight_atten
-
-        if self.adaptive_weight is None:
-            self.adaptive_weight = Parameter(adaptive_weight)
-            self.adaptive_weight.requires_grad = True
-        else:
-            self.adaptive_weight.data = adaptive_weight
+        if self.adaptive_bias is not None:
+            if adaptive_bias is None:
+                adaptive_bias = self.adaptive_bias.data
+            self.adaptive_bias.data = adaptive_bias
+            self.adaptive_bias.requires_grad = True
 
     def forward(self, data: torch.Tensor) -> Any:
         theta = self.global_weight_atten * self.global_weight + self.adaptive_weight
@@ -467,8 +474,8 @@ class Operator(OperatorModule):
             adaptive_layers = model.adaptive_module_leaves()
             sparseness = 0.0
             for name, module in adaptive_layers:
-                sparseness += torch.abs(1.0 - module.global_weight_atten).sum()
-                sparseness += torch.abs(module.adaptive_weight).sum()
+                sparseness += torch.abs(module.initial_global_weight_atten - module.global_weight_atten).sum()
+                sparseness += torch.abs(module.initial_adaptive_weight - module.adaptive_weight).sum()
             loss += sparseness * model.lambda_l1
 
             loss.backward()
