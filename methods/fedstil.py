@@ -351,11 +351,6 @@ class Model(ModelModule):
             for l_name, layer in self.pre_trained_module_leaves() \
             for p_name, params in layer.state_dict().items()
         }
-        old_net_params = {
-            f'{l_name}.{p_name}': params.clone().detach() \
-            for l_name, layer in self.adaptive_module_leaves(self.old_net) \
-            for p_name, params in layer.state_dict().items()
-        }
 
         return {
             'global_weight': global_weights,
@@ -364,7 +359,6 @@ class Model(ModelModule):
             'adaptive_bias': adaptive_bias,
             'bn_params': bn_params,
             'pre_trained_params': pre_trained_params,
-            'old_net_params': old_net_params,
         }
 
     def update_model(self, params_state: Dict[str, torch.Tensor]):
@@ -410,13 +404,6 @@ class Model(ModelModule):
                 for n, p in params_state['pre_trained_params'].items()
             }
 
-        old_net_params = {}
-        if 'old_net_params' in params_state.keys():
-            old_net_params = {
-                n: p.clone().detach() \
-                for n, p in params_state['old_net_params'].items()
-            }
-
         model_params = {
             **global_weight,
             **global_weight_atten,
@@ -424,7 +411,6 @@ class Model(ModelModule):
             **adaptive_bias,
             **bn_params,
             **pre_trained_params,
-            **old_net_params,
         }
 
         model_dict = self.net.state_dict()
@@ -708,8 +694,8 @@ class Client(ClientModule):
         adaptive_layers = self.model.adaptive_module_leaves()
         model_state = self.model.model_state()
         integrated_shared_weights = {
-            f'{name}.sw': (layer.global_weight_atten * layer.global_weight
-                           + layer.adaptive_weight).clone().detach() \
+            f'{name}.global_weight': (layer.global_weight_atten * layer.global_weight
+                                      + layer.adaptive_weight).clone().detach() \
             for name, layer in adaptive_layers
         }
         return {

@@ -6,7 +6,7 @@ model_opts:
   num_classes: 1000
   last_stride: 1
   neck: bnneck
-  lambda_penalty: 200.0
+  lambda_penalty: 10.0
   fine_tuning:
     - base.layer4
     - gap
