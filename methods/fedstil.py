@@ -17,7 +17,7 @@ from modules.operator import OperatorModule
 from modules.server import ServerModule
 from tools.distance import compute_euclidean_distance
 from tools.evaluate import calculate_similarity_distance, evaluate
-from tools.utils import torch_device, model_on_device, ModulePathTracer
+from tools.utils import model_on_device, ModulePathTracer
 
 
 class AdaptiveLayer(nn.Module):
@@ -28,6 +28,7 @@ class AdaptiveLayer(nn.Module):
             global_weight_atten: torch.Tensor = None,
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
+            atten_default: float = 0.90,
             **kwargs
     ):
         super(AdaptiveLayer, self).__init__()
@@ -36,6 +37,7 @@ class AdaptiveLayer(nn.Module):
         self.global_weight_atten = Parameter()
         self.adaptive_weight = Parameter()
         self.adaptive_bias = Parameter() if adaptive_bias else None
+        self.atten_default = atten_default
 
         self.initial_global_weight_atten = Parameter()
         self.initial_adaptive_weight = Parameter()
@@ -60,7 +62,7 @@ class AdaptiveLayer(nn.Module):
         self.global_weight.requires_grad = False
 
         if global_weight_atten is None:
-            global_weight_atten = torch.ones(self.global_weight.data.shape[-1]) * 0.8
+            global_weight_atten = torch.ones(self.global_weight.data.shape[-1]) * self.atten_default
         self.global_weight_atten.data = global_weight_atten
         self.initial_global_weight_atten.data = global_weight_atten.clone().detach()
         self.global_weight_atten.requires_grad = True
@@ -97,6 +99,7 @@ class AdaptiveConv2D(AdaptiveLayer):
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
             global_weight_atten: torch.Tensor = None,
+            atten_default: float = 0.90,
             stride: int = 1,
             padding: int = 0,
             **kwargs
@@ -106,6 +109,7 @@ class AdaptiveConv2D(AdaptiveLayer):
             adaptive_weight,
             adaptive_bias,
             global_weight_atten,
+            atten_default,
             **kwargs
         )
         self.stride = stride
@@ -135,6 +139,7 @@ class AdaptiveBatchNorm(AdaptiveLayer):
             global_weight_atten: torch.Tensor = None,
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
+            atten_default: float = 0.90,
             momentum: float = 0.1,
             eps: float = 1e-5,
             **kwargs
@@ -144,6 +149,7 @@ class AdaptiveBatchNorm(AdaptiveLayer):
             adaptive_weight,
             adaptive_bias,
             global_weight_atten,
+            atten_default,
             **kwargs
         )
         self.register_buffer('running_mean', running_mean)
@@ -199,12 +205,12 @@ class Model(ModelModule):
             net: Union[nn.Sequential, nn.Module],
             lambda_l1: float = 1e-3,
             lambda_kd: float = 0.0,
-            device: str = None,
+            atten_default: float = 0.90,
             **kwargs
     ) -> None:
         super(Model, self).__init__(net)
 
-        self.device = torch_device(device)
+        self.atten_default = atten_default
         self.lambda_l1 = lambda_l1
         self.lambda_kd = lambda_kd
         self.args = kwargs
@@ -238,12 +244,14 @@ class Model(ModelModule):
                 module = AdaptiveLayer(
                     global_weight=module.weight,
                     adaptive_bias=module.bias,
+                    atten_default=self.atten_default,
                 )
 
             if isinstance(module, nn.Conv2d):
                 module = AdaptiveConv2D(
                     global_weight=module.weight,
                     adaptive_bias=module.bias,
+                    atten_default=self.atten_default,
                     stride=module.stride,
                     padding=module.padding,
                 )
@@ -256,6 +264,7 @@ class Model(ModelModule):
                     track_running_stats=module.track_running_stats,
                     global_weight=module.weight,
                     adaptive_bias=module.bias,
+                    atten_default=self.atten_default,
                     momentum=module.momentum,
                     eps=module.eps,
                 )
