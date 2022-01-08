@@ -271,7 +271,7 @@ class ExperimentStage(object):
                         "val_rank_5": cmc[4],
                         "val_rank_10": cmc[9],
                         "val_map": mAP,
-                        'val_avg_representation': avg_rep.tolist(),
+                        # 'val_avg_representation': avg_rep.tolist(),
                     })
             except Exception as ex:
                 client.logger.error(ex)
