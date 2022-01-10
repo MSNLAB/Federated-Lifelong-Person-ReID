@@ -6,9 +6,9 @@ model_opts:
   num_classes: 1000
   last_stride: 1
   neck: bnneck
-  atten_default: 0.85
-  lambda_l1: 1.0e-5
-  lambda_kd: 20.0
+  atten_default: 0.80
+  lambda_l1: 1.0e-4
+  lambda_kd: 1.0
   fine_tuning:
     - base.layer4
     - gap
