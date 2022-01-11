@@ -28,7 +28,7 @@ class AdaptiveLayer(nn.Module):
             global_weight_atten: torch.Tensor = None,
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
-            atten_default: float = 0.90,
+            atten_default: float = 0.80,
             **kwargs
     ):
         super(AdaptiveLayer, self).__init__()
@@ -99,7 +99,7 @@ class AdaptiveConv2D(AdaptiveLayer):
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
             global_weight_atten: torch.Tensor = None,
-            atten_default: float = 0.90,
+            atten_default: float = 0.80,
             stride: int = 1,
             padding: int = 0,
             **kwargs
@@ -139,7 +139,7 @@ class AdaptiveBatchNorm(AdaptiveLayer):
             global_weight_atten: torch.Tensor = None,
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
-            atten_default: float = 0.90,
+            atten_default: float = 0.80,
             momentum: float = 0.1,
             eps: float = 1e-5,
             **kwargs
@@ -203,9 +203,9 @@ class Model(ModelModule):
     def __init__(
             self,
             net: Union[nn.Sequential, nn.Module],
-            lambda_l1: float = 1e-3,
-            lambda_kd: float = 0.0,
-            atten_default: float = 0.90,
+            lambda_l1: float = 1e-4,
+            lambda_kd: float = 1.0,
+            atten_default: float = 0.80,
             **kwargs
     ) -> None:
         super(Model, self).__init__(net)
