@@ -36,7 +36,7 @@ class AdaptiveLayer(nn.Module):
         self.global_weight = Parameter()
         self.global_weight_atten = Parameter()
         self.adaptive_weight = Parameter()
-        self.adaptive_bias = Parameter() if adaptive_bias else None
+        self.adaptive_bias = Parameter() if adaptive_bias is not None else None
         self.atten_default = atten_default
 
         self.initial_global_weight_atten = Parameter()
