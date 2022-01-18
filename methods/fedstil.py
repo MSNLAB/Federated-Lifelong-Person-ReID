@@ -2,7 +2,7 @@ import collections
 import copy
 import math
 from queue import Queue
-from typing import Any, Dict, Union, List, Optional
+from typing import Any, Dict, Union, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -129,17 +129,18 @@ class AdaptiveConv2D(AdaptiveLayer):
 
 
 class AdaptiveBatchNorm(AdaptiveLayer):
+
     def __init__(
             self,
-            running_mean: torch.Tensor,
-            running_var: torch.Tensor,
-            num_batches_tracked: torch.Tensor,
-            track_running_stats: bool,
             global_weight: torch.Tensor,
             global_weight_atten: torch.Tensor = None,
             adaptive_weight: torch.Tensor = None,
             adaptive_bias: torch.Tensor = None,
             atten_default: float = 0.80,
+            running_mean: torch.Tensor = None,
+            running_var: torch.Tensor = None,
+            num_batches_tracked: torch.Tensor = None,
+            track_running_stats: bool = False,
             momentum: float = 0.1,
             eps: float = 1e-5,
             **kwargs
@@ -193,11 +194,42 @@ class AdaptiveBatchNorm(AdaptiveLayer):
         )
 
 
+class AdaptiveLayerNorm(AdaptiveLayer):
+
+    def __init__(
+            self,
+            global_weight: torch.Tensor,
+            global_weight_atten: torch.Tensor = None,
+            adaptive_weight: torch.Tensor = None,
+            adaptive_bias: torch.Tensor = None,
+            atten_default: float = 0.80,
+            normalized_shape: Tuple[int, ...] = None,
+            eps: float = 1e-5,
+            **kwargs
+    ) -> None:
+        super(AdaptiveLayerNorm, self).__init__(
+            global_weight,
+            adaptive_weight,
+            adaptive_bias,
+            global_weight_atten,
+            atten_default,
+            **kwargs
+        )
+        self.normalized_shape = normalized_shape
+        self.eps = eps
+
+    def forward(self, data: torch.Tensor):
+        theta = self.global_weight_atten * self.global_weight + self.adaptive_weight
+        bias = self.adaptive_bias
+        return F.layer_norm(data, self.normalized_shape, theta, bias, self.eps)
+
+
 class Model(ModelModule):
     _module_transform_lut = {
         nn.Linear: AdaptiveLayer,
         nn.Conv2d: AdaptiveConv2D,
         nn.BatchNorm2d: AdaptiveBatchNorm,
+        nn.LayerNorm: AdaptiveLayerNorm,
     }
 
     def __init__(
@@ -258,14 +290,23 @@ class Model(ModelModule):
 
             if isinstance(module, nn.BatchNorm2d):
                 module = AdaptiveBatchNorm(
+                    global_weight=module.weight,
+                    adaptive_bias=module.bias,
+                    atten_default=self.atten_default,
                     running_mean=module.running_mean,
                     running_var=module.running_var,
                     num_batches_tracked=module.num_batches_tracked,
                     track_running_stats=module.track_running_stats,
+                    momentum=module.momentum,
+                    eps=module.eps,
+                )
+
+            if isinstance(module, nn.LayerNorm):
+                module = AdaptiveLayerNorm(
                     global_weight=module.weight,
                     adaptive_bias=module.bias,
                     atten_default=self.atten_default,
-                    momentum=module.momentum,
+                    normalized_shape=module.normalized_shape,
                     eps=module.eps,
                 )
 

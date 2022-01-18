@@ -14,7 +14,7 @@ import collections
 import copy
 import random
 from queue import Queue
-from typing import Any, Dict, Union, List, Optional
+from typing import Any, Dict, Union, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -144,10 +144,6 @@ class DecomposedConv2D(DecomposedLayer):
 class DecomposedBatchNorm(DecomposedLayer):
     def __init__(
             self,
-            running_mean: torch.Tensor,
-            running_var: torch.Tensor,
-            num_batches_tracked: torch.Tensor,
-            track_running_stats: bool,
             shared_weight: torch.Tensor,
             bias: torch.Tensor = None,
             mask: torch.Tensor = None,
@@ -157,6 +153,10 @@ class DecomposedBatchNorm(DecomposedLayer):
             lambda_l1: float = None,
             lambda_mask: float = None,
             kb_cnt: int = 5,
+            running_mean: torch.Tensor = None,
+            running_var: torch.Tensor = None,
+            num_batches_tracked: torch.Tensor = None,
+            track_running_stats: bool = False,
             momentum: float = 0.1,
             eps: float = 1e-5,
             **kwargs
@@ -206,11 +206,42 @@ class DecomposedBatchNorm(DecomposedLayer):
         )
 
 
+class DecomposedLayerNorm(DecomposedLayer):
+
+    def __init__(
+            self,
+            shared_weight: torch.Tensor,
+            bias: torch.Tensor = None,
+            mask: torch.Tensor = None,
+            adaptive: torch.Tensor = None,
+            knowledge_base: torch.Tensor = None,
+            atten: torch.Tensor = None,
+            lambda_l1: float = None,
+            lambda_mask: float = None,
+            kb_cnt: int = 5,
+            normalized_shape: Tuple[int, ...] = None,
+            eps: float = 1e-5,
+            **kwargs
+    ) -> None:
+        super(DecomposedLayerNorm, self).__init__(shared_weight, bias, mask, adaptive, knowledge_base,
+                                                  atten, lambda_l1, lambda_mask, kb_cnt, **kwargs)
+        self.normalized_shape = normalized_shape
+        self.eps = eps
+
+    def forward(self, data: torch.Tensor):
+        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
+        bias = self.bias
+        return F.layer_norm(data, self.normalized_shape, theta, bias, self.eps)
+
+
 class Model(ModelModule):
     _module_transform_lut = {
         nn.Linear: DecomposedLayer,
         nn.Conv2d: DecomposedConv2D,
         nn.BatchNorm2d: DecomposedBatchNorm,
+        nn.LayerNorm: DecomposedLayerNorm,
     }
 
     def __init__(
@@ -266,17 +297,28 @@ class Model(ModelModule):
 
             if isinstance(module, nn.BatchNorm2d):
                 module = DecomposedBatchNorm(
+                    shared_weight=module.weight,
+                    bias=module.bias,
+                    lambda_l1=self.lambda_l1,
+                    lambda_mask=self.lambda_mask,
+                    kb_cnt=self.kb_cnt,
                     running_mean=module.running_mean,
                     running_var=module.running_var,
                     num_batches_tracked=module.num_batches_tracked,
                     track_running_stats=module.track_running_stats,
                     momentum=module.momentum,
                     eps=module.eps,
+                )
+
+            if isinstance(module, nn.LayerNorm):
+                module = DecomposedBatchNorm(
                     shared_weight=module.weight,
                     bias=module.bias,
                     lambda_l1=self.lambda_l1,
                     lambda_mask=self.lambda_mask,
                     kb_cnt=self.kb_cnt,
+                    normalized_shape=module.normalized_shape,
+                    eps=module.eps,
                 )
 
             # replace module with decomposed layer
