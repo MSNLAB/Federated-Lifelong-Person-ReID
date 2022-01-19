@@ -15,15 +15,18 @@ $ pip3 install -r requirements.txt
 ```shell
 $ git clone https://github.com/MSNLAB/Awesome-ReID-for-FCL.git
 $ python3 Awesome-ReID-for-FCL/main.py \
-        --datasets market1501 duke prid2011 pku \
-        --roots ./datasets/Market-1501 \
-                ./datasets/DukeMTMC-reID \
-                ./datasets/prid_2011 \
-                ./datasets/pku_reid \
-        --output ./datasets/preprocessed \
-        --split_indice 0.8 0.1 0.7 \
-        --task_indice 5 8 \
-        --random_seed 123
+    --datasets market1501 duke prid2011 pku cuhk03 ethz \
+    --roots ./datasets/Market-1501 \
+            ./datasets/DukeMTMC-reID \
+            ./datasets/prid_2011 \
+            ./datasets/pku_reid \
+            ./datasets/CUHK-03 \
+            ./datasets/ethz \
+    --output ./datasets/preprocessed \
+    --split_indice 0.8 0.1 0.7 \
+    --task_indice 5 10 \
+    --temporal_indice 0.5 3.0 \
+    --random_seed 123
 ```
 
 *[Note] Alternatively, you can download our preprocessed open dataset for simple test, the site will be announced soon.* 
