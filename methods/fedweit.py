@@ -57,7 +57,6 @@ class DecomposedLayer(nn.Module):
 
         if mask is None:
             mask = torch.zeros(self.sw.shape[-1])
-            mask = torch.sigmoid(mask)
         self.mask = Parameter(mask)
         self.mask.requires_grad = True
 
@@ -75,8 +74,7 @@ class DecomposedLayer(nn.Module):
         self.aw_kb.requires_grad = False
 
         if atten is None:
-            atten = torch.zeros([kb_cnt])
-            atten = torch.sigmoid(atten)
+            atten = torch.ones([kb_cnt]) / (kb_cnt + 1)
         self.atten = Parameter(atten)
         self.atten.requires_grad = True
 
