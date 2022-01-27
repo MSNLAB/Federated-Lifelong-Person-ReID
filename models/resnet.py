@@ -181,7 +181,7 @@ class _ResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=last_stride,
                                        dilate=replace_stride_with_dilation[2])
-
+        self.gap = nn.AdaptiveAvgPool2d(1)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -237,7 +237,8 @@ class _ResNet(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        return x
+        x = self.gap(x)
+        return x.view(x.shape[0], -1)
 
     def forward(self, x: Tensor) -> Tensor:
         return self._forward_impl(x)
@@ -309,8 +310,7 @@ class ResNet_ReID(nn.Module):
         self.base.load_state_dict(base_state_dict)
 
     def forward(self, x):
-        global_feat = self.gap(self.base(x))
-        global_feat = global_feat.view(global_feat.shape[0], -1)
+        global_feat = self.base(x)
 
         if self.neck == 'bnneck':
             feat = self.bottleneck(global_feat)  # normalize for angular softmax
