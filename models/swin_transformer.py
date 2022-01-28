@@ -609,7 +609,7 @@ class SwinTransformer(nn.Module):
         x = self.norm(x)  # B L C
         x = self.avgpool(x.transpose(1, 2))  # B C 1
         x = torch.flatten(x, 1)
-        return x
+        return x.view(x.shape[0], -1)
 
     def forward(self, x):
         x = self.forward_features(x)
@@ -682,7 +682,6 @@ class SwinTransformer_ReID(nn.Module):
 
     def forward(self, x):
         global_feat = self.base.forward_features(x)
-        global_feat = global_feat.view(global_feat.shape[0], -1)
 
         if self.neck == 'bnneck':
             feat = self.bottleneck(global_feat)  # normalize for angular softmax
