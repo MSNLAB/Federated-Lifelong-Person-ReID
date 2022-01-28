@@ -166,7 +166,6 @@ class ExperimentStage(object):
                 self._process_one_round(curr_round, server, clients, exp_config, log)
 
             del server, clients, log
-            clear_cache()
 
     def _process_one_round(self, curr_round, server, clients, exp_config, log) -> Any:
         # sample online clients
@@ -229,6 +228,7 @@ class ExperimentStage(object):
         server.calculate()
 
     @staticmethod
+    @clear_cache
     def _process_train(client, log, curr_round, container):
         with container.possess_device() as device:
             try:
@@ -249,10 +249,9 @@ class ExperimentStage(object):
             except Exception as ex:
                 client.logger.error(ex)
                 raise ex
-            finally:
-                clear_cache()
 
     @staticmethod
+    @clear_cache
     def _process_val(client, log, curr_round, container):
         with container.possess_device() as device:
             try:
@@ -271,10 +270,7 @@ class ExperimentStage(object):
                         "val_rank_5": cmc[4],
                         "val_rank_10": cmc[9],
                         "val_map": mAP,
-                        # 'val_avg_representation': avg_rep.tolist(),
                     })
             except Exception as ex:
                 client.logger.error(ex)
                 raise ex
-            finally:
-                clear_cache()

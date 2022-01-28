@@ -13,7 +13,7 @@ from modules.model import ModelModule
 from modules.operator import OperatorModule
 from modules.server import ServerModule
 from tools.evaluate import calculate_similarity_distance, evaluate
-from tools.utils import model_on_device, get_one_hot
+from tools.utils import model_on_device, get_one_hot, clear_cache
 
 
 class Model(ModelModule):
@@ -23,7 +23,8 @@ class Model(ModelModule):
             net: Union[nn.Sequential, nn.Module],
             operator: OperatorModule = None,
             k: float = 8000,
-            n_classes=1000,
+            n_classes=10,
+            examplar_batch_size=32,
             **kwargs
     ):
         super(Model, self).__init__(net)
@@ -35,10 +36,16 @@ class Model(ModelModule):
 
         self.examplars = {}
         self.means = {}
-        self.previous_logits = []
+        self.previous_logits = torch.Tensor([])
+        self.examplar_loader = DataLoader(
+            ReIDImageDataset(source=self.examplars),
+            batch_size=examplar_batch_size
+        )
+
+        require_bias = self.net.classifier.bias is not None
+        self.net.classifier = nn.Linear(self.net.classifier.in_features, n_classes, require_bias).to(self.device)
 
         self.features_extractor = self.net.base
-        self.classifier = self.net.classifier
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         return self.net(data)
@@ -46,26 +53,40 @@ class Model(ModelModule):
     def add_n_classes(self, n):
         if n > 0:
             self.n_classes += n
-            require_bias = self.classifier.bias is not None
+            require_bias = self.net.classifier.bias is not None
 
-            weight = self.classifier.weight.data
-            bias = self.classifier.bias.data if require_bias else None
+            weight = self.net.classifier.weight.data
+            bias = self.net.classifier.bias.data if require_bias else None
 
-            self.classifier = nn.Linear(self.classifier.in_dim, self.n_classes, require_bias)
+            self.net.classifier = nn.Linear(self.net.classifier.in_features, self.n_classes, require_bias).to(
+                self.device)
 
-            self.classifier.weight.data[:self.n_classes - n] = weight
+            self.net.classifier.weight.data[:self.n_classes - n] = weight
             if require_bias:
-                self.classifier.bias.data[:self.n_classes - n] = bias
+                self.net.classifier.bias.data[:self.n_classes - n] = bias
 
+    @clear_cache
+    def build_previous_logits(self):
+        previous_logits = []
+        self.net.train()
+        for data, person_id, classes_id in self.examplar_loader:
+            data = data.to(self.device)
+            with torch.no_grad():
+                score, feature = self.net.forward(data)
+                previous_logits.append(score.clone().detach().cpu())
+        if len(previous_logits) != 0:
+            self.previous_logits = torch.cat(previous_logits)
+
+    @clear_cache
     def build_examplars(self, dataloader, device):
         imgs, ids, classes, features = [], [], [], []
         self.eval()
         for data, person_id, classes_id in dataloader:
             data = data.to(device)
-            imgs.append(data.cpu())
-            ids.append(person_id.cpu())
-            classes.append(classes_id.cpu())
-            features.append(self.features_extractor(data).cpu())
+            imgs.append(data.clone().detach().cpu())
+            ids.append(person_id.clone().detach().cpu())
+            classes.append(classes_id.clone().detach().cpu())
+            features.append(self.features_extractor(data).clone().detach().cpu())
 
         imgs = torch.cat(imgs).detach().numpy()
         ids = torch.cat(ids).detach().numpy()
@@ -91,6 +112,9 @@ class Model(ModelModule):
             self.examplars[person_idx] = examplars
             self.means[person_idx] = _mean
 
+        self.examplar_loader.dataset.reload_source(source=self.examplars)
+
+    @clear_cache
     def reduce_examplars(self):
         for class_idx in self.examplars.keys():
             self.examplars[class_idx] = self.examplars[class_idx][:self.k // self.n_classes]
@@ -102,8 +126,8 @@ class Model(ModelModule):
                 for n, p in self.net.state_dict().items()
             },
             'examplars': {
-                class_id: imgs.clone().detach() \
-                for class_id, imgs in self.examplars.items()
+                person_id: protos \
+                for person_id, protos in self.examplars.items()
             },
             'means': self.means
         }
@@ -116,7 +140,7 @@ class Model(ModelModule):
             self.net.load_state_dict(net_dict)
 
         if 'examplars' in params_state.keys():
-            self.examplars = {class_id: imgs for class_id, imgs in params_state['examples'].items()}
+            self.examplars = {person_id: protos for person_id, protos in params_state['examplars'].items()}
 
         if 'means' in params_state.keys():
             self.means = params_state['means']
@@ -140,14 +164,8 @@ class Operator(OperatorModule):
         device = next(model.parameters()).device
 
         model.train()
-        model.add_n_classes(int(max(dataloader.dataset.person_ids)) - model.n_classes)
         self.set_optimizer_parameters(model)
 
-        examplar_loader = DataLoader(ReIDImageDataset(source=model.examplars), batch_size=32)
-        previous_logits = [model(data.to(device))[0].clone().detach().cpu() \
-                           for data, person_id, classes_id in examplar_loader]
-
-        # learn for incremental classes
         for data, person_id, classes_id in dataloader:
             data, target = data.to(device), classes_id.to(device)
             self.optimizer.zero_grad()
@@ -160,25 +178,30 @@ class Operator(OperatorModule):
             data_cnt += len(data)
             batch_cnt += 1
 
-        # learn and distill for memory images
-        for idx, (data, person_id, classes_id) in enumerate(examplar_loader):
-            data, target = data.to(device), person_id.to(device)
-            self.optimizer.zero_grad()
-            logit = model(data)[0]
-            clf_loss = F.binary_cross_entropy_with_logits(
-                input=logit,
-                target=get_one_hot(target, model.n_classes).to(device)
-            )
-            distill_loss = F.binary_cross_entropy_with_logits(
-                input=logit[:, :previous_logits[idx].shape[1]],
-                target=torch.sigmoid(previous_logits[idx][:, :previous_logits[idx].shape[1]].to(device))
-            )
-            loss = clf_loss + distill_loss
-            loss.backward()
-            self.optimizer.step()
-
-        model.reduce_examplars()
-        model.build_examplars(dataloader, device)
+        if len(model.previous_logits) != 0:
+            for idx, (data, person_id, classes_id) in enumerate(model.examplar_loader):
+                data, target = data.to(device), person_id.to(device)
+                previous_logits = model.previous_logits[
+                                  idx * model.examplar_loader.batch_size:
+                                  (idx + 1) * model.examplar_loader.batch_size,
+                                  :]
+                previous_classes = previous_logits.shape[1]
+                self.optimizer.zero_grad()
+                score, feature = model.forward(data)
+                clf_loss = F.binary_cross_entropy_with_logits(
+                    input=score,
+                    target=get_one_hot(target, model.n_classes).to(device)
+                )
+                if torch.sigmoid(previous_logits[:, :previous_classes]).shape[0] != score[:, :previous_classes].shape[
+                    0]:
+                    print("ERROR")
+                distill_loss = F.binary_cross_entropy_with_logits(
+                    input=score[:, :previous_classes],
+                    target=torch.sigmoid(previous_logits[:, :previous_classes]).to(device)
+                )
+                loss = clf_loss + distill_loss
+                loss.backward()
+                self.optimizer.step()
 
         train_acc = train_acc / data_cnt
         train_loss = train_loss / batch_cnt
@@ -344,6 +367,15 @@ class Operator(OperatorModule):
 
 class Client(ClientModule):
 
+    def load_model(self, model_name: str):
+        model_dict = self.model.model_state()
+        model_dict = self.load_state(model_name, model_dict)
+        self.model.update_model(model_dict)
+
+    def save_model(self, model_name: str):
+        model_dict = self.model.model_state()
+        self.save_state(model_name, model_dict, True)
+
     def update_by_incremental_state(self, state: Dict, **kwargs) -> Any:
         self.load_model(self.model_ckpt_name)
         self.update_model(state['model_params'])
@@ -374,6 +406,11 @@ class Client(ClientModule):
         initial_lr = self.operator.optimizer.defaults['lr']
 
         with model_on_device(self.model, device):
+            self.model.build_previous_logits()
+
+            incremental_classes = int(max(tr_loader.dataset.person_ids)) - self.model.n_classes
+            self.model.add_n_classes(incremental_classes)
+
             for epoch in range(1, epochs + 1):
                 output = self.train_one_epoch(task_name, tr_loader, val_loader)
                 accuracy, loss, data_count = output['accuracy'], output['loss'], output['data_count']
@@ -391,6 +428,9 @@ class Client(ClientModule):
                     data_count, perf_acc, perf_loss,
                     epoch, epochs
                 )
+
+            self.model.reduce_examplars()
+            self.model.build_examplars(tr_loader, device)
 
         # Reset learning rate
         self.operator.optimizer.state = collections.defaultdict(dict)

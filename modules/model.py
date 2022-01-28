@@ -26,3 +26,7 @@ class ModelModule(nn.Module):
 
     def update_model(self, *args, **kwargs) -> Dict:
         raise NotImplementedError
+
+    @property
+    def device(self):
+        return next(self.parameters()).device

@@ -107,12 +107,6 @@ def tensor_value(*tensors: torch.Tensor):
         return (tensor_value(tensor) for tensor in tensors)
 
 
-def clear_cache():
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-
 class model_on_device(object):
 
     def __init__(self, model: nn.Module, device: str = 'cpu') -> None:
@@ -125,6 +119,21 @@ class model_on_device(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.model.cpu()
+
+
+def clear_cache(func):
+    def _clear_cache():
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    def _func(*args, **kwargs):
+        _clear_cache()
+        res = func(*args, **kwargs)
+        _clear_cache()
+        return res
+
+    return _func
 
 
 class ModulePathTracer(torch.fx.Tracer):

@@ -10,7 +10,9 @@ class ReIDImageDataset(Dataset):
 
     def __init__(self, source: Union[str, Dict], transform: Callable = augmentations['none']()):
         super(ReIDImageDataset, self).__init__()
+        self.reload_source(source, transform)
 
+    def reload_source(self, source, transform: Callable = augmentations['none']()):
         if isinstance(source, str):
             self.dataset = ImageFolder(source, transform)
             self.classes = [int(class_idx) for class_idx in self.dataset.classes]
