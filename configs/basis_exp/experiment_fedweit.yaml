@@ -1,16 +1,17 @@
-exp_name: mas
-exp_method: mas
+exp_name: fedweit
+exp_method: fedweit
 
 model_opts:
   name: resnet50
   num_classes: 1000
   last_stride: 1
   neck: bnneck
-  lambda_penalty: 200.0
+  lambda_l1: 1.0e-8
+  lambda_l2: 1.0e-1
+  lambda_mask: 0.0
+  kb_cnt: 5
   fine_tuning:
     - base.layer4
-    - gap
-    - bottleneck
     - classifier
 
 server:

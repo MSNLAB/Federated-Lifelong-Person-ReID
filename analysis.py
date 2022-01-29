@@ -17,7 +17,7 @@ marker = ['s', 'o', '^', 'P', '*', 'D', '|', 'v', 'x', '8']
 def calculate_accuracy(log_path: str, rounds: int, metric_name: str = 'val_map'):
     # load logs from disk
     with open(log_path, 'r') as f:
-        state = json.load(fp=f)
+        state = json.load(fp=f)['data']
 
     client_avg = []  # { client_name: avg mAP }
     for client_name, communication in state.items():
@@ -36,7 +36,7 @@ def calculate_accuracy(log_path: str, rounds: int, metric_name: str = 'val_map')
 def calculate_forgetting(log_path: str, rounds: int, metric_name: str = 'val_map'):
     # load logs from disk
     with open(log_path, 'r') as f:
-        state = json.load(fp=f)
+        state = json.load(fp=f)['data']
 
     client_forgetting = []  # { client_name: avg mAP }
     for client_name, communication in state.items():
@@ -68,13 +68,13 @@ def plot_learning_curve(
         clients: List[str] = None,
         rounds: List[int] = None,
         tasks: List[str] = None,
-        plt_figure: tuple = (12, 4),
+        plt_figure: tuple = (20, 3),
         plt_dpi: int = 300,
         col_default_cnt: int = 5,
         y_lim: tuple = (0, 100)
 ):
     with open(log_path, 'r') as f:
-        state = json.load(fp=f)
+        state = json.load(fp=f)['data']
         if clients:
             for client_name in list(state.keys()):
                 if client_name not in clients:
@@ -90,6 +90,9 @@ def plot_learning_curve(
                     for task_name in list(comm_state.keys()):
                         if task_name not in tasks:
                             del comm_state[task_name]
+
+    state = {k: v for k, v in sorted(state.items(), key=lambda v: v[0])}
+
     client_num = len(state.keys())
 
     plt.figure(figsize=plt_figure, dpi=plt_dpi)
@@ -152,7 +155,7 @@ def plot_compared_methods(
 
     for job_name, job_log_path in job_log_paths.items():
         with open(job_log_path, 'r') as f:
-            state = json.load(fp=f)
+            state = json.load(fp=f)['data']
             if clients:
                 for client_name in list(state.keys()):
                     if client_name not in clients:
@@ -206,7 +209,7 @@ def plot_compared_methods(
             l_id = l_id + 1 if l_id + 1 < len(line_style) else 0
             m_id = m_id + 1 if m_id + 1 < len(marker) else 0
 
-        plt.ylim(y_lim)
+        # plt.ylim(y_lim)
         plt.legend(loc="lower right")
         plt.title(client_name)
         plt.xlabel("Communication Round")
@@ -380,23 +383,42 @@ def plot_rep_distributions(
 
 
 if __name__ == '__main__':
-    # plot_learning_curve(
-    #     log_path="./logs/2021-12-6/ours-sm_2021-12-07-11-57-00.log",
-    #     save_path="./logs/2021-12-6/ours-sm_2021-12-07-11-57-00_choose_mAP.png",
-    #     metric_name="val_map",
-    #     metric_desc="mAP",
-    #     y_lim=[0, 90],
-    #     clients=['client-1', 'client-2', 'client-3', ],
-    #     rounds=[10, 30, 50, 70,  90],
-    #     tasks=['task-1', 'task-2', 'task-3']
+    plot_learning_curve(
+        log_path="./logs/2022-1-30/fedweit-2022-01-24-00-33.json",
+        save_path="./logs/2022-1-30/fedweit-2022-01-24-00-33_mAP.png",
+        metric_name="val_map",
+        metric_desc="mAP",
+        y_lim=[0, 90],
+        # clients=['client-0', 'client-1', 'client-2', 'client-3', 'client-4', ],
+        # rounds=[10, 30, 50, 70,  90],
+        # tasks=['task-1', 'task-2', 'task-3']
+    )
+    # plot_compared_methods(
+    #     job_log_paths={
+    #         'single-model': './logs/2022-1-18/sm-2022-01-17-13-41.json',
+    #         'multi-model': './logs/2022-1-18/mm-2022-01-17-15-18.json',
+    #         'ewc': './logs/2022-1-18/ewc-2022-01-17-16-56.json',
+    #         'mas': './logs/2022-1-18/mas-2022-01-17-19-12.json',
+    #         'fedavg': './logs/2022-1-18/fedavg-2022-01-18-17-38.json',
+    #         'fedprox': './logs/2022-1-18/fedprox-2022-01-18-19-34.json',
+    #         'fedcurv': './logs/2022-1-18/fedcurv-2022-01-18-22-45.json',
+    #         'fedweit': './logs/2022-1-18/fedweit-2022-01-19-17-30.json',
+    #         'fedstil': './logs/2022-1-18/fedstil-2022-01-19-12-55.json',
+    #     },
+    #     save_path='./logs/2022-1-18/total.png',
+    #     metric_name='val_map',
+    #     metric_desc='average mAP',
+    #     clients=['client-0', 'client-1', 'client-2', 'client-3', 'client-4', ],
+    #     rounds=[10, 20, 30, 40, 50, 60, 70, 80],
+    #     y_lim=(30, 82)
     # )
-    # calculate_accuracy(
-    #     log_path='./logs/2021-12-6/ours-mm_2021-12-07-12-00-36.log',
-    #     metric_name="val_rank_5",
-    #     rounds=80
-    # )
+    calculate_accuracy(
+        log_path='./logs/2022-1-30/fedweit-2022-01-24-00-33.json',
+        metric_name="val_map",
+        rounds=80
+    )
     calculate_forgetting(
-        log_path='./logs/2021-12-6/ours-mm_2021-12-07-12-00-36.log',
+        log_path='./logs/2022-1-30/fedweit-2022-01-24-00-33.json',
         metric_name="val_map",
         rounds=80
     )
@@ -444,30 +466,8 @@ if __name__ == '__main__':
     #         # 'fedprox': './logs/2021-11-30/fedprox_2021-11-30-04-14-53.log',
     #         'fedweit': './logs/2021-12-6/fedweit_2021-12-06-12-44-28.log',
     #         'fedcurv': './logs/2021-12-6/fedcurv_2021-12-07-09-33-19.log',
-    #         # 'fedreil(ours-m)': './logs/2021-12-6/ours-mm_2021-12-07-12-00-36.log',
-    #         'fedreil(ours-s)': './logs/2021-12-6/ours-sm_2021-12-07-11-57-00.log'
     #     },
     #     save_path='./logs/2021-12-6/rep_dis_total.png',
     #     clients=['client-0', 'client-1', 'client-2', 'client-3', 'client-4'],
     #     rounds=[80],
-    # )
-    # plot_compared_methods(
-    #     job_log_paths={
-    #         # 'single-model': './logs/2021-12-6/sm_2021-12-06-05-39-40.log',
-    #         # 'multi-model': './logs/2021-12-6/mm_2021-12-06-11-43-16.log',
-    #         # 'ewc': './logs/2021-12-6/ewc_2021-12-06-19-36-33.log',
-    #         # 'mas': './logs/2021-12-6/mas_2021-12-07-04-25-16.log',
-    #         # 'fedavg': './logs/2021-12-6/fedavg_2021-12-07-10-51-06.log',
-    #         # 'fedprox': './logs/2021-11-30/fedprox_2021-11-30-04-14-53.log',
-    #         'fedcurv': './logs/2021-12-6/fedcurv_2021-12-07-09-33-19.log',
-    #         'fedweit': './logs/2021-12-6/fedweit_2021-12-06-12-44-28.log',
-    #         'ours-m': './logs/2021-12-6/ours-mm_2021-12-07-12-00-36.log',
-    #         'ours-s': './logs/2021-12-6/ours-sm_2021-12-07-11-57-00.log'
-    #     },
-    #     save_path='./logs/2021-12-6/total.png',
-    #     metric_name='val_map',
-    #     metric_desc='average mAP',
-    #     clients=['client-0', 'client-1', 'client-2', 'client-3', 'client-4', ],
-    #     rounds=[10, 20, 30, 40, 50, 60, 70, 80],
-    #     y_lim=(30, 82)
     # )

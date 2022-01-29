@@ -9,8 +9,6 @@ model_opts:
   lambda_penalty: 200.0
   fine_tuning:
     - base.layer4
-    - gap
-    - bottleneck
     - classifier
 
 server:

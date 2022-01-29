@@ -58,8 +58,9 @@ class Model(ModelModule):
             weight = self.net.classifier.weight.data
             bias = self.net.classifier.bias.data if require_bias else None
 
-            self.net.classifier = nn.Linear(self.net.classifier.in_features, self.n_classes, require_bias).to(
-                self.device)
+            self.net.classifier = nn.Linear(self.net.classifier.in_features,
+                                            self.n_classes,
+                                            require_bias).to(self.device)
 
             self.net.classifier.weight.data[:self.n_classes - n] = weight
             if require_bias:
@@ -95,6 +96,7 @@ class Model(ModelModule):
 
         for person_idx in np.unique(ids):
             _ids = np.argwhere(ids == person_idx).squeeze(axis=1)
+
             _imgs = imgs[_ids]
             _classes = classes[_ids]
             _features = features[_ids]
@@ -161,7 +163,7 @@ class Operator(OperatorModule):
     ) -> Any:
         train_acc = train_loss = 0.0
         batch_cnt = data_cnt = 0
-        device = next(model.parameters()).device
+        device = model.device
 
         model.train()
         self.set_optimizer_parameters(model)
@@ -179,22 +181,19 @@ class Operator(OperatorModule):
             batch_cnt += 1
 
         if len(model.previous_logits) != 0:
+            examplar_batch_size = model.examplar_loader.batch_size
             for idx, (data, person_id, classes_id) in enumerate(model.examplar_loader):
+                previous_from, previous_to = idx * examplar_batch_size, (idx + 1) * examplar_batch_size
                 data, target = data.to(device), person_id.to(device)
-                previous_logits = model.previous_logits[
-                                  idx * model.examplar_loader.batch_size:
-                                  (idx + 1) * model.examplar_loader.batch_size,
-                                  :]
+                previous_logits = model.previous_logits[previous_from:previous_to, :]
                 previous_classes = previous_logits.shape[1]
+
                 self.optimizer.zero_grad()
                 score, feature = model.forward(data)
                 clf_loss = F.binary_cross_entropy_with_logits(
                     input=score,
                     target=get_one_hot(target, model.n_classes).to(device)
                 )
-                if torch.sigmoid(previous_logits[:, :previous_classes]).shape[0] != score[:, :previous_classes].shape[
-                    0]:
-                    print("ERROR")
                 distill_loss = F.binary_cross_entropy_with_logits(
                     input=score[:, :previous_classes],
                     target=torch.sigmoid(previous_logits[:, :previous_classes]).to(device)
@@ -242,7 +241,7 @@ class Operator(OperatorModule):
     ) -> Any:
         pred_acc = pred_loss = 0.0
         batch_cnt = data_cnt = 0
-        device = next(model.parameters()).device
+        device = model.device
 
         model.train()
         for data, person_id, classes_id in dataloader:
@@ -291,7 +290,7 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features = []
-        device = next(model.parameters()).device
+        device = model.device
 
         model.eval()
         for data, person_id, classes_id in dataloader:
@@ -329,7 +328,7 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features, labels = [], []
-        device = next(model.parameters()).device
+        device = model.device
 
         model.eval()
         for data, person_id, classes_id in dataloader:
@@ -406,9 +405,8 @@ class Client(ClientModule):
         initial_lr = self.operator.optimizer.defaults['lr']
 
         with model_on_device(self.model, device):
-            self.model.build_previous_logits()
-
             incremental_classes = int(max(tr_loader.dataset.person_ids)) - self.model.n_classes
+            self.model.build_previous_logits()
             self.model.add_n_classes(incremental_classes)
 
             for epoch in range(1, epochs + 1):

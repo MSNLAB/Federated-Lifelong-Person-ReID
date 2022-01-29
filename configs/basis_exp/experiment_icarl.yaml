@@ -1,17 +1,5 @@
-exp_name: fedprox
-exp_method: fedprox
-
-model_opts:
-  name: resnet50
-  num_classes: 1000
-  last_stride: 1
-  neck: bnneck
-  lambda_l2: 0.01
-  fine_tuning:
-    - base.layer4
-    - gap
-    - bottleneck
-    - classifier
+exp_name: icarl
+exp_method: icarl
 
 server:
   server_name: server

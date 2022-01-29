@@ -33,7 +33,7 @@ class Operator(OperatorModule):
     ) -> Any:
         train_acc = train_loss = 0.0
         batch_cnt = data_cnt = 0
-        device = next(model.parameters()).device
+        device = model.device
 
         model.train()
         for data, person_id, classes_id in dataloader:
@@ -88,7 +88,7 @@ class Operator(OperatorModule):
     ) -> Any:
         pred_acc = pred_loss = 0.0
         batch_cnt = data_cnt = 0
-        device = next(model.parameters()).device
+        device = model.device
 
         model.train()
         for data, person_id, classes_id in dataloader:
@@ -137,7 +137,7 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features = []
-        device = next(model.parameters()).device
+        device = model.device
 
         model.eval()
         for data, person_id, classes_id in dataloader:
@@ -175,7 +175,7 @@ class Operator(OperatorModule):
     ) -> Any:
         batch_cnt, data_cnt = 0, 0
         features, labels = [], []
-        device = next(model.parameters()).device
+        device = model.device
 
         model.eval()
         for data, person_id, classes_id in dataloader:

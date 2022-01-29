@@ -1,6 +1,6 @@
-datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-18/
-checkpoints_dir: ./ckpts/2022-1-18/
-logs_dir: ./logs/2022-1-18/
+datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-market-sp/
+checkpoints_dir: ./ckpts/2022-1-30/
+logs_dir: ./logs/2022-1-30/
 
 parallel: 3
 device:
@@ -22,8 +22,6 @@ defaults:
     neck: bnneck
     fine_tuning:
       - base.layer4
-      - gap
-      - bottleneck
       - classifier
 
   criterion_opts:

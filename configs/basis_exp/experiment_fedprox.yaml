@@ -1,16 +1,14 @@
-exp_name: fedcurv
-exp_method: fedcurv
+exp_name: fedprox
+exp_method: fedprox
 
 model_opts:
   name: resnet50
   num_classes: 1000
   last_stride: 1
   neck: bnneck
-  lambda_penalty: 10.0
+  lambda_l2: 0.01
   fine_tuning:
     - base.layer4
-    - gap
-    - bottleneck
     - classifier
 
 server:
@@ -60,7 +58,7 @@ clients:
       - task-3-5
       - task-3-6
       - task-3-7
-
+  
   - client_name: client-4
     tasks:
       - task-4-0
