@@ -710,7 +710,7 @@ class Operator(OperatorModule):
 
     def _invoke_valid(
             self,
-            model: nn.Module,
+            model: Model,
             data: Any,
             target: Any,
             norm: bool = True,
@@ -929,7 +929,7 @@ class Server(ServerModule):
     def __init__(
             self,
             server_name: str,
-            model: nn.Module,
+            model: Model,
             operator: OperatorModule,
             ckpt_root: str,
             **kwargs

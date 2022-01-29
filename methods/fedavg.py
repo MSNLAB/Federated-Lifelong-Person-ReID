@@ -14,10 +14,10 @@ from typing import Any, Dict, Union, List
 
 import torch
 import torch.nn.functional as F
-from torch import nn as nn
 from torch.utils.data import DataLoader
 
 from modules.client import ClientModule
+from modules.model import ModelModule
 from modules.operator import OperatorModule
 from modules.server import ServerModule
 from tools.evaluate import calculate_similarity_distance, evaluate
@@ -28,7 +28,7 @@ class Operator(OperatorModule):
 
     def invoke_train(
             self,
-            model: nn.Module,
+            model: ModelModule,
             dataloader: DataLoader,
             **kwargs
     ) -> Any:
@@ -64,7 +64,7 @@ class Operator(OperatorModule):
 
     def _invoke_train(
             self,
-            model: nn.Module,
+            model: ModelModule,
             data: Any,
             target: Any,
             **kwargs
@@ -82,7 +82,7 @@ class Operator(OperatorModule):
 
     def invoke_predict(
             self,
-            model: nn.Module,
+            model: ModelModule,
             dataloader: DataLoader,
             **kwargs
     ) -> Any:
@@ -113,7 +113,7 @@ class Operator(OperatorModule):
 
     def _invoke_predict(
             self,
-            model: nn.Module,
+            model: ModelModule,
             data: Any,
             target: Any,
             **kwargs
@@ -131,7 +131,7 @@ class Operator(OperatorModule):
 
     def invoke_inference(
             self,
-            model: nn.Module,
+            model: ModelModule,
             dataloader: DataLoader,
             **kwargs
     ) -> Any:
@@ -157,7 +157,7 @@ class Operator(OperatorModule):
 
     def _invoke_inference(
             self,
-            model: nn.Module,
+            model: ModelModule,
             data: Any,
             norm: bool = True,
             **kwargs
@@ -169,7 +169,7 @@ class Operator(OperatorModule):
 
     def invoke_valid(
             self,
-            model: nn.Module,
+            model: ModelModule,
             dataloader: DataLoader,
             **kwargs
     ) -> Any:
@@ -199,7 +199,7 @@ class Operator(OperatorModule):
 
     def _invoke_valid(
             self,
-            model: nn.Module,
+            model: ModelModule,
             data: Any,
             target: Any,
             norm: bool = True,
@@ -216,7 +216,7 @@ class Client(ClientModule):
     def __init__(
             self,
             client_name: str,
-            model: nn.Module,
+            model: ModelModule,
             operator: OperatorModule,
             ckpt_root: str,
             model_ckpt_name: str = None,

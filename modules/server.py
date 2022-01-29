@@ -2,15 +2,21 @@ import os
 from typing import Dict, Any
 
 import torch
-import torch.nn as nn
 
+from modules.model import ModelModule
 from modules.operator import OperatorModule
 from tools.logger import Logger
 
 
 class ServerModule(object):
-    def __init__(self, server_name: str, model: nn.Module,
-                 operator: OperatorModule, ckpt_root: str, **kwargs):
+    def __init__(
+            self,
+            server_name: str,
+            model: ModelModule,
+            operator: OperatorModule,
+            ckpt_root: str,
+            **kwargs
+    ):
         self.server_name = server_name
         self.model = model
         self.operator = operator

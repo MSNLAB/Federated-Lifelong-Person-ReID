@@ -2,9 +2,9 @@ import os
 from typing import Dict, Any, Union, List
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 
+from modules.model import ModelModule
 from modules.operator import OperatorModule
 from tools.logger import Logger
 
@@ -13,7 +13,7 @@ class ClientModule(object):
     def __init__(
             self,
             client_name: str,
-            model: nn.Module,
+            model: ModelModule,
             operator: OperatorModule,
             ckpt_root: str,
             model_ckpt_name: str = None,

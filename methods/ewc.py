@@ -25,200 +25,12 @@ from tools.evaluate import calculate_similarity_distance, evaluate
 from tools.utils import model_on_device
 
 
-class Operator(OperatorModule):
-
-    def invoke_train(
-            self,
-            model: nn.Module,
-            dataloader: DataLoader,
-            **kwargs
-    ) -> Any:
-        train_acc = train_loss = 0.0
-        batch_cnt = data_cnt = 0
-        device = model.device
-
-        model.train()
-        for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
-            self.optimizer.zero_grad()
-            output = self._invoke_train(model, data, target, **kwargs)
-            score, loss = output['score'], output['loss']
-            losses = loss + model.penalty()
-            losses.backward()
-            self.optimizer.step()
-            train_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
-            train_loss += loss.cpu().detach().item()
-            data_cnt += len(data)
-            batch_cnt += 1
-
-        train_acc = train_acc / data_cnt
-        train_loss = train_loss / batch_cnt
-
-        if self.scheduler:
-            self.scheduler.step()
-
-        return {
-            'accuracy': train_acc,
-            'loss': train_loss,
-            'batch_count': batch_cnt,
-            'data_count': data_cnt,
-        }
-
-    def _invoke_train(
-            self,
-            model: nn.Module,
-            data: Any,
-            target: Any,
-            **kwargs
-    ) -> Any:
-        score, feature = model.forward(data)
-        loss = 0.0
-        for loss_func in self.criterion:
-            loss += loss_func(score=score, feature=feature, target=target)
-
-        return {
-            'score': score,
-            'feature': feature,
-            'loss': loss,
-        }
-
-    def invoke_predict(
-            self,
-            model: nn.Module,
-            dataloader: DataLoader,
-            **kwargs
-    ) -> Any:
-        pred_acc = pred_loss = 0.0
-        batch_cnt = data_cnt = 0
-        device = model.device
-
-        model.train()
-        for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
-            with torch.no_grad():
-                output = self._invoke_predict(model, data, target, **kwargs)
-            score, loss = output['score'], output['loss']
-            pred_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
-            pred_loss += loss.cpu().detach().item()
-            data_cnt += len(data)
-            batch_cnt += 1
-
-        pred_acc = pred_acc / data_cnt
-        pred_loss = pred_loss / batch_cnt
-
-        return {
-            'accuracy': pred_acc,
-            'loss': pred_loss,
-            'batch_count': batch_cnt,
-            'data_count': data_cnt,
-        }
-
-    def _invoke_predict(
-            self,
-            model: nn.Module,
-            data: Any,
-            target: Any,
-            **kwargs
-    ) -> Any:
-        score, feature = model.forward(data)
-        loss = 0.0
-        for loss_func in self.criterion:
-            loss += loss_func(score=score, feature=feature, target=target)
-
-        return {
-            'score': score,
-            'feature': feature,
-            'loss': loss
-        }
-
-    def invoke_inference(
-            self,
-            model: nn.Module,
-            dataloader: DataLoader,
-            **kwargs
-    ) -> Any:
-        batch_cnt, data_cnt = 0, 0
-        features = []
-        device = model.device
-
-        model.eval()
-        for data, person_id, classes_id in dataloader:
-            data = data.to(device)
-            with torch.no_grad():
-                feature = self._invoke_inference(model, data, **kwargs)['feature']
-                features.append(feature.clone().detach())
-            data_cnt += len(data)
-            batch_cnt += 1
-        features = torch.cat(features, dim=0).cpu().detach()
-
-        return {
-            'features': features,
-            'batch_count': batch_cnt,
-            'data_count': data_cnt,
-        }
-
-    def _invoke_inference(
-            self,
-            model: nn.Module,
-            data: Any,
-            norm: bool = True,
-            **kwargs
-    ) -> Any:
-        feat = model.forward(data)
-        if norm:
-            feat = F.normalize(feat, dim=1, p=2)
-        return {'feature': feat}
-
-    def invoke_valid(
-            self,
-            model: nn.Module,
-            dataloader: DataLoader,
-            **kwargs
-    ) -> Any:
-        batch_cnt, data_cnt = 0, 0
-        features, labels = [], []
-        device = model.device
-
-        model.eval()
-        for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), person_id.to(device)
-            with torch.no_grad():
-                feature = self._invoke_valid(model, data, target)['feature']
-                features.append(feature.clone().detach())
-                labels.append(person_id.clone().detach())
-            batch_cnt += 1
-            data_cnt += len(data)
-
-        features = torch.cat(features, dim=0).cpu().detach()
-        labels = torch.cat(labels, dim=0).cpu().detach()
-
-        return {
-            'features': features,
-            'labels': labels,
-            'batch_count': batch_cnt,
-            'data_count': data_cnt,
-        }
-
-    def _invoke_valid(
-            self,
-            model: nn.Module,
-            data: Any,
-            target: Any,
-            norm: bool = True,
-            **kwargs
-    ) -> Any:
-        feat = model.forward(data)
-        if norm:
-            feat = F.normalize(feat, dim=1, p=2)
-        return {'feature': feat}
-
-
 class Model(ModelModule):
 
     def __init__(
             self,
             net: Union[nn.Sequential, nn.Module],
-            operator: Operator = None,
+            operator: OperatorModule = None,
             lambda_penalty: float = 100.0,
             **kwargs
     ) -> None:
@@ -337,6 +149,194 @@ class Model(ModelModule):
         if 'precision_matrices' in params_state.keys():
             for n, p in self.precision_matrices.items():
                 self.precision_matrices[n] = p.clone().detach()
+
+
+class Operator(OperatorModule):
+
+    def invoke_train(
+            self,
+            model: Model,
+            dataloader: DataLoader,
+            **kwargs
+    ) -> Any:
+        train_acc = train_loss = 0.0
+        batch_cnt = data_cnt = 0
+        device = model.device
+
+        model.train()
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), classes_id.to(device)
+            self.optimizer.zero_grad()
+            output = self._invoke_train(model, data, target, **kwargs)
+            score, loss = output['score'], output['loss']
+            losses = loss + model.penalty()
+            losses.backward()
+            self.optimizer.step()
+            train_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
+            train_loss += loss.cpu().detach().item()
+            data_cnt += len(data)
+            batch_cnt += 1
+
+        train_acc = train_acc / data_cnt
+        train_loss = train_loss / batch_cnt
+
+        if self.scheduler:
+            self.scheduler.step()
+
+        return {
+            'accuracy': train_acc,
+            'loss': train_loss,
+            'batch_count': batch_cnt,
+            'data_count': data_cnt,
+        }
+
+    def _invoke_train(
+            self,
+            model: Model,
+            data: Any,
+            target: Any,
+            **kwargs
+    ) -> Any:
+        score, feature = model.forward(data)
+        loss = 0.0
+        for loss_func in self.criterion:
+            loss += loss_func(score=score, feature=feature, target=target)
+
+        return {
+            'score': score,
+            'feature': feature,
+            'loss': loss,
+        }
+
+    def invoke_predict(
+            self,
+            model: Model,
+            dataloader: DataLoader,
+            **kwargs
+    ) -> Any:
+        pred_acc = pred_loss = 0.0
+        batch_cnt = data_cnt = 0
+        device = model.device
+
+        model.train()
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), classes_id.to(device)
+            with torch.no_grad():
+                output = self._invoke_predict(model, data, target, **kwargs)
+            score, loss = output['score'], output['loss']
+            pred_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
+            pred_loss += loss.cpu().detach().item()
+            data_cnt += len(data)
+            batch_cnt += 1
+
+        pred_acc = pred_acc / data_cnt
+        pred_loss = pred_loss / batch_cnt
+
+        return {
+            'accuracy': pred_acc,
+            'loss': pred_loss,
+            'batch_count': batch_cnt,
+            'data_count': data_cnt,
+        }
+
+    def _invoke_predict(
+            self,
+            model: Model,
+            data: Any,
+            target: Any,
+            **kwargs
+    ) -> Any:
+        score, feature = model.forward(data)
+        loss = 0.0
+        for loss_func in self.criterion:
+            loss += loss_func(score=score, feature=feature, target=target)
+
+        return {
+            'score': score,
+            'feature': feature,
+            'loss': loss
+        }
+
+    def invoke_inference(
+            self,
+            model: Model,
+            dataloader: DataLoader,
+            **kwargs
+    ) -> Any:
+        batch_cnt, data_cnt = 0, 0
+        features = []
+        device = model.device
+
+        model.eval()
+        for data, person_id, classes_id in dataloader:
+            data = data.to(device)
+            with torch.no_grad():
+                feature = self._invoke_inference(model, data, **kwargs)['feature']
+                features.append(feature.clone().detach())
+            data_cnt += len(data)
+            batch_cnt += 1
+        features = torch.cat(features, dim=0).cpu().detach()
+
+        return {
+            'features': features,
+            'batch_count': batch_cnt,
+            'data_count': data_cnt,
+        }
+
+    def _invoke_inference(
+            self,
+            model: Model,
+            data: Any,
+            norm: bool = True,
+            **kwargs
+    ) -> Any:
+        feat = model.forward(data)
+        if norm:
+            feat = F.normalize(feat, dim=1, p=2)
+        return {'feature': feat}
+
+    def invoke_valid(
+            self,
+            model: Model,
+            dataloader: DataLoader,
+            **kwargs
+    ) -> Any:
+        batch_cnt, data_cnt = 0, 0
+        features, labels = [], []
+        device = model.device
+
+        model.eval()
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), person_id.to(device)
+            with torch.no_grad():
+                feature = self._invoke_valid(model, data, target)['feature']
+                features.append(feature.clone().detach())
+                labels.append(person_id.clone().detach())
+            batch_cnt += 1
+            data_cnt += len(data)
+
+        features = torch.cat(features, dim=0).cpu().detach()
+        labels = torch.cat(labels, dim=0).cpu().detach()
+
+        return {
+            'features': features,
+            'labels': labels,
+            'batch_count': batch_cnt,
+            'data_count': data_cnt,
+        }
+
+    def _invoke_valid(
+            self,
+            model: Model,
+            data: Any,
+            target: Any,
+            norm: bool = True,
+            **kwargs
+    ) -> Any:
+        feat = model.forward(data)
+        if norm:
+            feat = F.normalize(feat, dim=1, p=2)
+        return {'feature': feat}
 
 
 class Client(ClientModule):

@@ -366,6 +366,19 @@ class Operator(OperatorModule):
 
 class Client(ClientModule):
 
+    def __init__(
+            self,
+            client_name: str,
+            model: Model,
+            operator: OperatorModule,
+            ckpt_root: str,
+            model_ckpt_name: str = None,
+            **kwargs
+    ):
+        super().__init__(client_name, model, operator, ckpt_root, model_ckpt_name, **kwargs)
+        if not self.model_ckpt_name:
+            self.model_ckpt_name = 'icarl_model'
+
     def load_model(self, model_name: str):
         model_dict = self.model.model_state()
         model_dict = self.load_state(model_name, model_dict)
