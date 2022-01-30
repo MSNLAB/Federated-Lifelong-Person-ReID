@@ -24,7 +24,7 @@ class Model(ModelModule):
             operator: OperatorModule = None,
             k: float = 8000,
             n_classes=10,
-            examplar_batch_size=32,
+            examplar_batch_size=64,
             **kwargs
     ):
         super(Model, self).__init__(net)
@@ -43,7 +43,11 @@ class Model(ModelModule):
         )
 
         require_bias = self.net.classifier.bias is not None
-        self.net.classifier = nn.Linear(self.net.classifier.in_features, n_classes, require_bias).to(self.device)
+        self.net.classifier = nn.Linear(
+            self.net.classifier.in_features,
+            n_classes,
+            require_bias
+        ).to(self.device)
 
         self.features_extractor = self.net.base
 
@@ -58,9 +62,11 @@ class Model(ModelModule):
             weight = self.net.classifier.weight.data
             bias = self.net.classifier.bias.data if require_bias else None
 
-            self.net.classifier = nn.Linear(self.net.classifier.in_features,
-                                            self.n_classes,
-                                            require_bias).to(self.device)
+            self.net.classifier = nn.Linear(
+                self.net.classifier.in_features,
+                self.n_classes,
+                require_bias
+            ).to(self.device)
 
             self.net.classifier.weight.data[:self.n_classes - n] = weight
             if require_bias:
@@ -100,7 +106,7 @@ class Model(ModelModule):
             _imgs = imgs[_ids]
             _classes = classes[_ids]
             _features = features[_ids]
-            _mean = _features / len(_features)
+            _mean = sum(_features) / len(_features)
 
             examplars = []
             examplars_fea = []
@@ -114,7 +120,11 @@ class Model(ModelModule):
             self.examplars[person_idx] = examplars
             self.means[person_idx] = _mean
 
-        self.examplar_loader.dataset.reload_source(source=self.examplars)
+        self.examplar_loader = DataLoader(
+            ReIDImageDataset(source=self.examplars),
+            batch_size=self.examplar_loader.batch_size,
+            shuffle=True,
+        )
 
     @clear_cache
     def reduce_examplars(self):
@@ -169,7 +179,7 @@ class Operator(OperatorModule):
         self.set_optimizer_parameters(model)
 
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             self.optimizer.zero_grad()
             output = self._invoke_train(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -245,7 +255,7 @@ class Operator(OperatorModule):
 
         model.train()
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             with torch.no_grad():
                 output = self._invoke_predict(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -418,7 +428,7 @@ class Client(ClientModule):
         initial_lr = self.operator.optimizer.defaults['lr']
 
         with model_on_device(self.model, device):
-            incremental_classes = int(max(tr_loader.dataset.person_ids)) - self.model.n_classes
+            incremental_classes = int(max(tr_loader.dataset.person_ids)) - self.model.n_classes + 1
             self.model.build_previous_logits()
             self.model.add_n_classes(incremental_classes)
 
