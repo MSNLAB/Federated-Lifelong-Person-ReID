@@ -17,8 +17,12 @@ class ReIDImageDataset(Dataset):
             self.dataset = ImageFolder(source, transform)
             self.classes = [int(class_idx) for class_idx in self.dataset.classes]
         elif isinstance(source, dict):
-            self.dataset = [(img, index) for class_idx, imgs in source.items() for img, index in imgs]
-            self.classes = [int(class_idx) for class_idx, imgs in source.items() for _ in imgs]
+            self.dataset = []
+            self.classes = {}
+            for person_id, protos in source.items():
+                for img, class_id in protos:
+                    self.dataset.append((img, class_id))
+                    self.classes[class_id] = person_id
         else:
             raise ValueError("Input source should be path in disk or dictionary in memory.")
 
