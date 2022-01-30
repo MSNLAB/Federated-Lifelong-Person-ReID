@@ -9,7 +9,6 @@ def augmentation_none(
         std=(0.229, 0.224, 0.225)
 ):
     return T.Compose([
-        T.Grayscale(3),
         T.ToTensor(),
         T.Normalize(mean, std),
         T.Resize(size),
@@ -22,7 +21,6 @@ def augmentation_default(
         std=(0.229, 0.224, 0.225)
 ):
     return T.Compose([
-        T.Grayscale(3),
         T.ToTensor(),
         T.Normalize(mean, std),
         T.RandomHorizontalFlip(p=0.5),
@@ -37,7 +35,6 @@ def augmentation_rose(
         std=(0.229, 0.224, 0.225)
 ):
     return T.Compose([
-        T.Grayscale(3),
         T.ToTensor(),
         T.Normalize(mean, std),
         T.RandomHorizontalFlip(p=0.5),
@@ -52,7 +49,6 @@ def augmentation_sharp(
         std=(0.229, 0.224, 0.225)
 ):
     return T.Compose([
-        T.Grayscale(3),
         T.ToTensor(),
         T.Normalize(mean, std),
         T.RandomHorizontalFlip(p=0.5),
@@ -67,7 +63,6 @@ def augmentation_drastic(
         std=(0.229, 0.224, 0.225)
 ):
     return T.Compose([
-        T.Grayscale(3),
         T.ToTensor(),
         T.Normalize(mean, std),
         T.RandomHorizontalFlip(p=0.5),
