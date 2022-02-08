@@ -1,4 +1,5 @@
 import collections
+import math
 from typing import Union, Dict, Any, List
 
 import numpy as np
@@ -22,7 +23,7 @@ class Model(ModelModule):
             self,
             net: Union[nn.Sequential, nn.Module],
             operator: OperatorModule = None,
-            k: float = 8000,
+            k: float = 500,
             n_classes=10,
             examplar_batch_size=64,
             **kwargs
@@ -39,7 +40,8 @@ class Model(ModelModule):
         self.previous_logits = torch.Tensor([])
         self.examplar_loader = DataLoader(
             ReIDImageDataset(source=self.examplars),
-            batch_size=examplar_batch_size
+            batch_size=examplar_batch_size,
+            drop_last=len(self.examplars) % examplar_batch_size == 1
         )
 
         require_bias = self.net.classifier.bias is not None
@@ -53,6 +55,10 @@ class Model(ModelModule):
 
     def forward(self, data: torch.Tensor) -> torch.Tensor:
         return self.net(data)
+
+    @property
+    def m(self):
+        return math.ceil(self.k / self.n_classes)
 
     def add_n_classes(self, n):
         if n > 0:
@@ -110,7 +116,7 @@ class Model(ModelModule):
 
             examplars = []
             examplars_fea = []
-            for i in range(self.k // self.n_classes):
+            for i in range(self.m):
                 p = _mean - (_features + np.sum(examplars_fea, axis=0)) / (i + 1)
                 p = np.linalg.norm(p, axis=1)
                 min_idx = np.argmin(p)
@@ -122,14 +128,15 @@ class Model(ModelModule):
 
         self.examplar_loader = DataLoader(
             ReIDImageDataset(source=self.examplars),
-            batch_size=self.examplar_loader.batch_size,
             shuffle=True,
+            batch_size=self.examplar_loader.batch_size,
+            drop_last=len(self.examplars) % self.examplar_loader.batch_size == 1
         )
 
     @clear_cache
     def reduce_examplars(self):
         for class_idx in self.examplars.keys():
-            self.examplars[class_idx] = self.examplars[class_idx][:self.k // self.n_classes]
+            self.examplars[class_idx] = self.examplars[class_idx][:self.m]
 
     def model_state(self, *args, **kwargs) -> Dict:
         return {
@@ -178,18 +185,6 @@ class Operator(OperatorModule):
         model.train()
         self.set_optimizer_parameters(model)
 
-        for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), person_id.to(device)
-            self.optimizer.zero_grad()
-            output = self._invoke_train(model, data, target, **kwargs)
-            score, loss = output['score'], output['loss']
-            loss.backward()
-            self.optimizer.step()
-            train_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
-            train_loss += loss.cpu().detach().item()
-            data_cnt += len(data)
-            batch_cnt += 1
-
         if len(model.previous_logits) != 0:
             examplar_batch_size = model.examplar_loader.batch_size
             for idx, (data, person_id, classes_id) in enumerate(model.examplar_loader):
@@ -211,6 +206,18 @@ class Operator(OperatorModule):
                 loss = clf_loss + distill_loss
                 loss.backward()
                 self.optimizer.step()
+
+        for data, person_id, classes_id in dataloader:
+            data, target = data.to(device), person_id.to(device)
+            self.optimizer.zero_grad()
+            output = self._invoke_train(model, data, target, **kwargs)
+            score, loss = output['score'], output['loss']
+            loss.backward()
+            self.optimizer.step()
+            train_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
+            train_loss += loss.cpu().detach().item()
+            data_cnt += len(data)
+            batch_cnt += 1
 
         train_acc = train_acc / data_cnt
         train_loss = train_loss / batch_cnt
