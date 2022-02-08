@@ -188,6 +188,20 @@ class ExperimentStage(object):
                 dispatch_state, True
             )
 
+        # simulate validation for each client
+        if curr_round == 1:
+            with ThreadPoolExecutor(self.container.max_worker()) as pool:
+                futures = []
+                for client in clients:
+                    futures.append(pool.submit(
+                        self._process_val,
+                        *(client, log, curr_round, self.container)
+                    ))
+                for future in as_completed(futures):
+                    future.result(timeout=1800)
+                    if future.exception():
+                        raise future.exception()
+
         # simulate training for each online client
         with ThreadPoolExecutor(self.container.max_worker()) as pool:
             futures = []
