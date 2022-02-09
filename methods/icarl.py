@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 
 from datasets.datasets_loader import ReIDImageDataset
 from modules.client import ClientModule
@@ -14,7 +14,7 @@ from modules.model import ModelModule
 from modules.operator import OperatorModule
 from modules.server import ServerModule
 from tools.evaluate import calculate_similarity_distance, evaluate
-from tools.utils import model_on_device, get_one_hot, clear_cache
+from tools.utils import model_on_device, get_one_hot
 
 
 class Model(ModelModule):
@@ -23,7 +23,7 @@ class Model(ModelModule):
             self,
             net: Union[nn.Sequential, nn.Module],
             operator: OperatorModule = None,
-            k: float = 500,
+            k: float = 8000,
             n_classes=10,
             examplar_batch_size=64,
             **kwargs
@@ -36,7 +36,6 @@ class Model(ModelModule):
         self.arg = kwargs
 
         self.examplars = {}
-        self.means = {}
         self.previous_logits = torch.Tensor([])
         self.examplar_loader = DataLoader(
             ReIDImageDataset(source=self.examplars),
@@ -78,7 +77,6 @@ class Model(ModelModule):
             if require_bias:
                 self.net.classifier.bias.data[:self.n_classes - n] = bias
 
-    @clear_cache
     def build_previous_logits(self):
         previous_logits = []
         self.net.train()
@@ -90,7 +88,6 @@ class Model(ModelModule):
         if len(previous_logits) != 0:
             self.previous_logits = torch.cat(previous_logits)
 
-    @clear_cache
     def build_examplars(self, dataloader, device):
         imgs, ids, classes, features = [], [], [], []
         self.eval()
@@ -124,7 +121,6 @@ class Model(ModelModule):
                 examplars_fea.append(_features[min_idx])
 
             self.examplars[person_idx] = examplars
-            self.means[person_idx] = _mean
 
         self.examplar_loader = DataLoader(
             ReIDImageDataset(source=self.examplars),
@@ -133,10 +129,28 @@ class Model(ModelModule):
             drop_last=len(self.examplars) % self.examplar_loader.batch_size == 1
         )
 
-    @clear_cache
     def reduce_examplars(self):
         for class_idx in self.examplars.keys():
             self.examplars[class_idx] = self.examplars[class_idx][:self.m]
+
+    def merge_loader(self, loader: DataLoader):
+        dataset = ConcatDataset([ReIDImageDataset(source=self.examplars), loader.dataset])
+        return DataLoader(
+            dataset=dataset,
+            shuffle=True,
+            batch_size=loader.batch_size,
+            drop_last=len(dataset) % loader.batch_size == 1,
+        )
+        # return DataLoader(
+        #     dataset=dataset,
+        #     shuffle=True,
+        #     batch_size=loader.batch_size,
+        #     num_workers=loader.num_workers,
+        #     pin_memory=loader.pin_memory,
+        #     drop_last=len(dataset) % loader.batch_size == 1,
+        #     persistent_workers=loader.persistent_workers,
+        #     multiprocessing_context=loader.multiprocessing_context,
+        # )
 
     def model_state(self, *args, **kwargs) -> Dict:
         return {
@@ -147,8 +161,7 @@ class Model(ModelModule):
             'examplars': {
                 person_id: protos \
                 for person_id, protos in self.examplars.items()
-            },
-            'means': self.means
+            }
         }
 
     def update_model(self, params_state: Dict[str, torch.Tensor]):
@@ -160,9 +173,6 @@ class Model(ModelModule):
 
         if 'examplars' in params_state.keys():
             self.examplars = {person_id: protos for person_id, protos in params_state['examplars'].items()}
-
-        if 'means' in params_state.keys():
-            self.means = params_state['means']
 
 
 class Operator(OperatorModule):
@@ -207,7 +217,7 @@ class Operator(OperatorModule):
                 loss.backward()
                 self.optimizer.step()
 
-        for data, person_id, classes_id in dataloader:
+        for data, person_id, classes_id in model.merge_loader(dataloader):
             data, target = data.to(device), person_id.to(device)
             self.optimizer.zero_grad()
             output = self._invoke_train(model, data, target, **kwargs)
