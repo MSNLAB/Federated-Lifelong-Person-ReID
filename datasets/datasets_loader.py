@@ -22,7 +22,7 @@ class ReIDImageDataset(Dataset):
             self.classes = {}
             for person_id, protos in source.items():
                 for img, class_id in protos:
-                    self.dataset.append((torch.from_numpy(img), class_id))
+                    self.dataset.append((img, class_id))
                     self.classes[class_id] = person_id
         else:
             raise ValueError("Input source should be path in disk or dictionary in memory.")
@@ -33,6 +33,9 @@ class ReIDImageDataset(Dataset):
 
     def __getitem__(self, index) -> Any:
         data, class_index = self.dataset[index]
+        data = torch.tensor(data, dtype=torch.float32) \
+            if not isinstance(data, torch.Tensor) else data
+        class_index = int(class_index)
         person_id = int(self.classes[class_index])
         return data, person_id, class_index
 

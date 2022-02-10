@@ -37,10 +37,12 @@ class Model(ModelModule):
 
         self.examplars = {}
         self.previous_logits = torch.Tensor([])
+
+        dataset = ReIDImageDataset(source=self.examplars)
         self.examplar_loader = DataLoader(
-            ReIDImageDataset(source=self.examplars),
+            dataset,
             batch_size=examplar_batch_size,
-            drop_last=len(self.examplars) % examplar_batch_size == 1
+            drop_last=len(dataset) % examplar_batch_size == 1
         )
 
         require_bias = self.net.classifier.bias is not None
@@ -122,11 +124,12 @@ class Model(ModelModule):
 
             self.examplars[person_idx] = examplars
 
+        dataset = ReIDImageDataset(source=self.examplars)
         self.examplar_loader = DataLoader(
-            ReIDImageDataset(source=self.examplars),
+            dataset,
             shuffle=True,
             batch_size=self.examplar_loader.batch_size,
-            drop_last=len(self.examplars) % self.examplar_loader.batch_size == 1
+            drop_last=len(dataset) % self.examplar_loader.batch_size == 1
         )
 
     def reduce_examplars(self):
@@ -139,18 +142,12 @@ class Model(ModelModule):
             dataset=dataset,
             shuffle=True,
             batch_size=loader.batch_size,
+            num_workers=loader.num_workers,
+            pin_memory=loader.pin_memory,
             drop_last=len(dataset) % loader.batch_size == 1,
+            persistent_workers=loader.persistent_workers,
+            multiprocessing_context=loader.multiprocessing_context,
         )
-        # return DataLoader(
-        #     dataset=dataset,
-        #     shuffle=True,
-        #     batch_size=loader.batch_size,
-        #     num_workers=loader.num_workers,
-        #     pin_memory=loader.pin_memory,
-        #     drop_last=len(dataset) % loader.batch_size == 1,
-        #     persistent_workers=loader.persistent_workers,
-        #     multiprocessing_context=loader.multiprocessing_context,
-        # )
 
     def model_state(self, *args, **kwargs) -> Dict:
         return {

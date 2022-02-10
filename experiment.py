@@ -159,6 +159,19 @@ class ExperimentStage(object):
             server = parser_server(exp_config, self.common_config)
             clients = parser_clients(exp_config, self.common_config)
 
+            # initial validate for tasks
+            with ThreadPoolExecutor(self.container.max_worker()) as pool:
+                futures = []
+                for client in clients:
+                    futures.append(pool.submit(
+                        self._process_val,
+                        *(client, log, 0, self.container)
+                    ))
+                for future in as_completed(futures):
+                    future.result(timeout=1800)
+                    if future.exception():
+                        raise future.exception()
+
             # simulate communication process
             comm_rounds = int(exp_config['exp_opts']['comm_rounds'])
             for curr_round in range(1, comm_rounds + 1):
@@ -187,20 +200,6 @@ class ExperimentStage(object):
                 f'{curr_round}-{server.server_name}-{client.client_name}',
                 dispatch_state, True
             )
-
-        # simulate validation for each client
-        if curr_round == 1:
-            with ThreadPoolExecutor(self.container.max_worker()) as pool:
-                futures = []
-                for client in clients:
-                    futures.append(pool.submit(
-                        self._process_val,
-                        *(client, log, curr_round, self.container)
-                    ))
-                for future in as_completed(futures):
-                    future.result(timeout=1800)
-                    if future.exception():
-                        raise future.exception()
 
         # simulate training for each online client
         with ThreadPoolExecutor(self.container.max_worker()) as pool:
