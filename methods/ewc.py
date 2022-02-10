@@ -59,12 +59,13 @@ class Model(ModelModule):
             for n, p in self.params.items()
         }
 
-        if len(self.recall_dataloaders) > 0:
+        if len(self.recall_dataloaders) > 1:
+            recall_dataloaders = [loader for task_name, loader in self.recall_dataloaders.items()]
+            recall_dataloaders = recall_dataloaders[:-1]  # skip current task
+
             device = next(self.net.parameters()).device
-            number_recall_data = sum(
-                [len(loader) for task_name, loader in self.recall_dataloaders.items()]
-            )
-            for task_name, recall_dataloader in self.recall_dataloaders.items():
+            number_recall_data = sum([len(loader) for loader in recall_dataloaders])
+            for recall_dataloader in recall_dataloaders:
                 for data, person_id, classes_id in recall_dataloader:
                     self.net.zero_grad()
                     data, target = data.to(device), classes_id.to(device)
@@ -414,7 +415,7 @@ class Client(ClientModule):
                     epoch, epochs
                 )
 
-            self.model.remember_task(task_name, val_loader)
+            self.model.remember_task(task_name, tr_loader)
 
         # Reset learning rate
         self.operator.optimizer.state = collections.defaultdict(dict)
