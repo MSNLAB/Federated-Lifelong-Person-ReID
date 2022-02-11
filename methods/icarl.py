@@ -25,7 +25,6 @@ class Model(ModelModule):
             operator: OperatorModule = None,
             k: float = 8000,
             n_classes=10,
-            examplar_batch_size=64,
             **kwargs
     ):
         super(Model, self).__init__(net)
@@ -37,13 +36,7 @@ class Model(ModelModule):
 
         self.examplars = {}
         self.previous_logits = torch.Tensor([])
-
-        dataset = ReIDImageDataset(source=self.examplars)
-        self.examplar_loader = DataLoader(
-            dataset,
-            batch_size=examplar_batch_size,
-            drop_last=len(dataset) % examplar_batch_size == 1
-        )
+        self.examplar_loader = None
 
         require_bias = self.net.classifier.bias is not None
         self.net.classifier = nn.Linear(
@@ -80,20 +73,20 @@ class Model(ModelModule):
                 self.net.classifier.bias.data[:self.n_classes - n] = bias
 
     def build_previous_logits(self):
-        previous_logits = []
-        self.net.train()
-        for data, person_id, classes_id in self.examplar_loader:
-            data = data.to(self.device)
-            with torch.no_grad():
-                score, feature = self.net.forward(data)
-                previous_logits.append(score.clone().detach().cpu())
-        if len(previous_logits) != 0:
+        if len(self.examplars) != 0:
+            previous_logits = []
+            self.net.train()
+            for data, person_id, classes_id in self.examplar_loader:
+                data = data.to(self.device)
+                with torch.no_grad():
+                    score, feature = self.net.forward(data)
+                    previous_logits.append(score.clone().detach().cpu())
             self.previous_logits = torch.cat(previous_logits)
 
     def build_examplars(self, dataloader, device):
         imgs, ids, classes, features = [], [], [], []
         self.eval()
-        for data, person_id, classes_id in dataloader:
+        for data, person_id, classes_id in self.merge_loader(dataloader):
             data = data.to(device)
             imgs.append(data.clone().detach().cpu())
             ids.append(person_id.clone().detach().cpu())
@@ -104,6 +97,16 @@ class Model(ModelModule):
         ids = torch.cat(ids).detach().numpy()
         classes = torch.cat(classes).detach().numpy()
         features = torch.cat(features).detach().numpy()
+
+        del_ids = []
+        for idx, person_id in enumerate(ids):
+            if person_id not in dataloader.dataset.person_ids:
+                del_ids.append(idx)
+
+        imgs = np.delete(imgs, del_ids, axis=0)
+        ids = np.delete(ids, del_ids, axis=0)
+        classes = np.delete(classes, del_ids, axis=0)
+        features = np.delete(features, del_ids, axis=0)
 
         for person_idx in np.unique(ids):
             _ids = np.argwhere(ids == person_idx).squeeze(axis=1)
@@ -119,7 +122,7 @@ class Model(ModelModule):
                 p = _mean - (_features + np.sum(examplars_fea, axis=0)) / (i + 1)
                 p = np.linalg.norm(p, axis=1)
                 min_idx = np.argmin(p)
-                examplars.append((_imgs[min_idx], _classes[min_idx]))
+                examplars.append((_imgs[min_idx], person_idx))
                 examplars_fea.append(_features[min_idx])
 
             self.examplars[person_idx] = examplars
@@ -128,8 +131,12 @@ class Model(ModelModule):
         self.examplar_loader = DataLoader(
             dataset,
             shuffle=True,
-            batch_size=self.examplar_loader.batch_size,
-            drop_last=len(dataset) % self.examplar_loader.batch_size == 1
+            batch_size=dataloader.batch_size,
+            num_workers=dataloader.num_workers,
+            pin_memory=dataloader.pin_memory,
+            drop_last=len(dataset) % dataloader.batch_size == 1,
+            persistent_workers=dataloader.persistent_workers,
+            multiprocessing_context=dataloader.multiprocessing_context,
         )
 
     def reduce_examplars(self):
@@ -137,17 +144,20 @@ class Model(ModelModule):
             self.examplars[class_idx] = self.examplars[class_idx][:self.m]
 
     def merge_loader(self, loader: DataLoader):
-        dataset = ConcatDataset([ReIDImageDataset(source=self.examplars), loader.dataset])
-        return DataLoader(
-            dataset=dataset,
-            shuffle=True,
-            batch_size=loader.batch_size,
-            num_workers=loader.num_workers,
-            pin_memory=loader.pin_memory,
-            drop_last=len(dataset) % loader.batch_size == 1,
-            persistent_workers=loader.persistent_workers,
-            multiprocessing_context=loader.multiprocessing_context,
-        )
+        if len(self.examplars) == 0:
+            return loader
+        else:
+            dataset = ConcatDataset([ReIDImageDataset(source=self.examplars), loader.dataset])
+            return DataLoader(
+                dataset=dataset,
+                shuffle=True,
+                batch_size=loader.batch_size,
+                num_workers=loader.num_workers,
+                pin_memory=loader.pin_memory,
+                drop_last=len(dataset) % loader.batch_size == 1,
+                persistent_workers=loader.persistent_workers,
+                multiprocessing_context=loader.multiprocessing_context,
+            )
 
     def model_state(self, *args, **kwargs) -> Dict:
         return {
