@@ -1,6 +1,6 @@
-datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-market-sp/
-checkpoints_dir: ./ckpts/2022-1-30/
-logs_dir: ./logs/2022-1-30/
+datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/
+checkpoints_dir: ./ckpts/2022-2-22/
+logs_dir: ./logs/2022-2-22/
 
 parallel: 3
 device:
@@ -11,13 +11,13 @@ defaults:
   random_seed: 123
 
   exp_opts:
-    comm_rounds: 80
+    comm_rounds: 60
     val_interval: 10
     online_clients: 5
 
   model_opts:
-    name: resnet50
-    num_classes: 1000
+    name: resnet18
+    num_classes: 2000
     last_stride: 1
     neck: bnneck
     fine_tuning:
@@ -26,7 +26,7 @@ defaults:
 
   criterion_opts:
     name: cross_entropy
-    num_classes: 1000
+    num_classes: 2000
     epsilon: 0.1
 
   optimizer_opts:

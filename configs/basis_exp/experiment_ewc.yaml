@@ -2,11 +2,11 @@ exp_name: ewc
 exp_method: ewc
 
 model_opts:
-  name: resnet50
-  num_classes: 1000
+  name: resnet18
+  num_classes: 2000
   last_stride: 1
   neck: bnneck
-  lambda_penalty: 10.0
+  lambda_penalty: 50.0
   fine_tuning:
     - base.layer4
     - classifier
@@ -23,8 +23,6 @@ clients:
       - task-0-3
       - task-0-4
       - task-0-5
-      - task-0-6
-      - task-0-7
 
   - client_name: client-1
     tasks:
@@ -34,8 +32,6 @@ clients:
       - task-1-3
       - task-1-4
       - task-1-5
-      - task-1-6
-      - task-1-7
 
   - client_name: client-2
     tasks:
@@ -45,8 +41,6 @@ clients:
       - task-2-3
       - task-2-4
       - task-2-5
-      - task-2-6
-      - task-2-7
 
   - client_name: client-3
     tasks:
@@ -56,8 +50,6 @@ clients:
       - task-3-3
       - task-3-4
       - task-3-5
-      - task-3-6
-      - task-3-7
 
   - client_name: client-4
     tasks:
@@ -67,5 +59,3 @@ clients:
       - task-4-3
       - task-4-4
       - task-4-5
-      - task-4-6
-      - task-4-7
