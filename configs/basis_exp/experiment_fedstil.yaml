@@ -6,9 +6,9 @@ model_opts:
   num_classes: 2000
   last_stride: 1
   neck: bnneck
-  atten_default: 0.80
+  atten_default: 0.50
   lambda_l1: 1.0e-4
-  lambda_kd: 1.0
+  lambda_k: 8000
   fine_tuning:
     - base.layer4
     - classifier

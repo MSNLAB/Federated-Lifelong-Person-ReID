@@ -1,16 +1,17 @@
 import collections
-import copy
 import math
 from queue import Queue
 from typing import Any, Dict, Union, List, Optional, Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn as nn
 from torch.nn import Parameter
 from torch.utils.data import DataLoader
+from torch.utils.data.dataset import ConcatDataset
 
-from criterions.kd_loss import DistillKL
+from datasets.datasets_loader import ReIDImageDataset
 from modules.client import ClientModule
 from modules.model import ModelModule
 from modules.operator import OperatorModule
@@ -236,7 +237,7 @@ class Model(ModelModule):
             self,
             net: Union[nn.Sequential, nn.Module],
             lambda_l1: float = 1e-4,
-            lambda_kd: float = 1.0,
+            lambda_k: int = 8000,
             atten_default: float = 0.80,
             **kwargs
     ) -> None:
@@ -244,11 +245,13 @@ class Model(ModelModule):
 
         self.atten_default = atten_default
         self.lambda_l1 = lambda_l1
-        self.lambda_kd = lambda_kd
+        self.lambda_k = lambda_k
         self.args = kwargs
-        self.old_net = None
 
         self.layer_convert(self.net)
+
+        self.ids = set()
+        self.examplars = {}
 
         tracer = ModulePathTracer()
         for node in tracer.trace(self.net).nodes:
@@ -259,6 +262,8 @@ class Model(ModelModule):
                     self.head_adaptive_layer = module
                     self.head_adaptive_layer.input_features = []
                     break
+
+        self.features_extractor = self.net.base
 
     def layer_convert(self, net):
         leaves = self.module_leaves(net)
@@ -319,6 +324,74 @@ class Model(ModelModule):
                 else:
                     pa_module = pa_module.__getattr__(module_name)
 
+    @property
+    def m(self):
+        return math.ceil(self.lambda_k / len(self.ids))
+
+    def build_examplars(self, dataloader, device):
+        imgs, ids, classes, features = [], [], [], []
+        self.eval()
+        for data, person_id, classes_id in self.merge_loader(dataloader):
+            data = data.to(device)
+            imgs.append(data.clone().detach().cpu())
+            ids.append(person_id.clone().detach().cpu())
+            classes.append(classes_id.clone().detach().cpu())
+            features.append(self.features_extractor(data).clone().detach().cpu())
+
+        imgs = torch.cat(imgs).detach().numpy()
+        ids = torch.cat(ids).detach().numpy()
+        classes = torch.cat(classes).detach().numpy()
+        features = torch.cat(features).detach().numpy()
+
+        del_ids = []
+        for idx, person_id in enumerate(ids):
+            if person_id not in dataloader.dataset.person_ids:
+                del_ids.append(idx)
+
+        imgs = np.delete(imgs, del_ids, axis=0)
+        ids = np.delete(ids, del_ids, axis=0)
+        classes = np.delete(classes, del_ids, axis=0)
+        features = np.delete(features, del_ids, axis=0)
+
+        for person_idx in np.unique(ids):
+            _ids = np.argwhere(ids == person_idx).squeeze(axis=1)
+
+            _imgs = imgs[_ids]
+            _classes = classes[_ids]
+            _features = features[_ids]
+            _mean = sum(_features) / len(_features)
+
+            examplars = []
+            examplars_fea = []
+            for i in range(self.m):
+                p = _mean - (_features + np.sum(examplars_fea, axis=0)) / (i + 1)
+                p = np.linalg.norm(p, axis=1)
+                min_idx = np.argmin(p)
+                examplars.append((_imgs[min_idx], _classes[min_idx]))
+                examplars_fea.append(_features[min_idx])
+
+            self.examplars[person_idx] = examplars
+
+    def reduce_examplars(self):
+        for class_idx in self.examplars.keys():
+            self.examplars[class_idx] = self.examplars[class_idx][:self.m]
+
+    def merge_loader(self, loader: DataLoader):
+        if len(self.examplars) == 0:
+            return loader
+        else:
+            dataset = ConcatDataset([ReIDImageDataset(source=self.examplars), loader.dataset])
+            return DataLoader(
+                dataset=dataset,
+                shuffle=True,
+                batch_size=loader.batch_size,
+                num_workers=loader.num_workers,
+                pin_memory=loader.pin_memory,
+                drop_last=len(dataset) % loader.batch_size == 1,
+                persistent_workers=loader.persistent_workers,
+                multiprocessing_context=loader.multiprocessing_context,
+            )
+
     @staticmethod
     def module_leaves(model: nn.Module) -> List:
         leaves = []
@@ -346,13 +419,6 @@ class Model(ModelModule):
             net = self.net
         return [(name, module) for name, module in self.module_leaves(net) \
                 if type(module) in self._module_transform_lut.values()]
-
-    def remember_params(self):
-        copied_net = copy.deepcopy(self.net)
-        pre_trained_layers = self.pre_trained_module_leaves()
-        for name, layers in pre_trained_layers:
-            copied_net.__setattr__(name, layers)
-        self.old_net = copied_net
 
     def forward(self, data: torch.Tensor) -> Any:
         return self.net(data)
@@ -502,23 +568,11 @@ class Operator(OperatorModule):
         model.head_adaptive_layer.input_features = []
         hook = model.head_adaptive_layer.register_forward_hook(_task_token_hook)
 
-        for data, person_id, classes_id in dataloader:
+        for data, person_id, classes_id in model.merge_loader(dataloader):
             data, target = data.to(device), classes_id.to(device)
             self.optimizer.zero_grad()
             stu_output = self._invoke_train(model, data, target, **kwargs)
             score, feature, loss = stu_output['score'], stu_output['feature'], stu_output['loss']
-
-            # knowledge from pre-model
-            if model.old_net is not None:
-                pre_model = model.old_net
-                kd_loss = DistillKL(2.0)
-                pre_model.train()
-                with torch.no_grad():
-                    pre_output = self._invoke_predict(pre_model, data, target, **kwargs)
-                pre_score, pre_feature = pre_output['score'], pre_output['feature']
-                loss += kd_loss(feature, pre_feature.clone().detach()) * model.lambda_kd
-                # loss += kd_loss(F.normalize(feature), F.normalize(pre_feature.clone().detach())) \
-                #         * model.lambda_kd
 
             # l1 loss to make adaptive weight sparse
             adaptive_layers = model.adaptive_module_leaves()
@@ -807,8 +861,8 @@ class Client(ClientModule):
             device: str = 'cpu',
             **kwargs
     ) -> Any:
-        if self.current_task is not None and self.current_task != task_name:
-            self.model.remember_params()
+        if self.current_task is None or self.current_task != task_name:
+            self.model.ids.update(tr_loader.dataset.person_ids)
         self.current_task = task_name
 
         output = {}
@@ -838,6 +892,9 @@ class Client(ClientModule):
                     data_count, perf_acc, perf_loss,
                     epoch, epochs
                 )
+
+            self.model.reduce_examplars()
+            self.model.build_examplars(tr_loader, device)
 
         # Reset learning rate
         self.operator.optimizer.state = collections.defaultdict(dict)
