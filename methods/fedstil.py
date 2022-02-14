@@ -6,7 +6,7 @@ from typing import Any, Dict, Union, List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn as nn
+from torch import nn as nn, fx
 from torch.nn import Parameter
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import ConcatDataset
@@ -253,17 +253,32 @@ class Model(ModelModule):
         self.ids = set()
         self.examplars = {}
 
+        self.features_extractor = self.net.base
+
+        # find training header
         tracer = ModulePathTracer()
         for node in tracer.trace(self.net).nodes:
             module_name = tracer.node_to_originating_module.get(node)
-            if module_name is not None:
+            if module_name:
                 module = self.net.get_submodule(module_name)
                 if isinstance(module, AdaptiveLayer):
                     self.head_adaptive_layer = module
                     self.head_adaptive_layer.input_features = []
+                    self.head_adaptive_layer.input_person_ids = []
+                    self.head_adaptive_layer.input_classes = []
                     break
 
-        self.features_extractor = self.net.base
+        # generate graph module of training part
+        tracer = ModulePathTracer()
+        for node in tracer.trace(self.net).nodes:
+            module_name = tracer.node_to_originating_module.get(node)
+            if module_name:
+                if self.net.get_submodule(module_name) != self.head_adaptive_layer:
+                    node.replace_all_uses_with(*node.all_input_nodes)
+                    tracer.graph.erase_node(node)
+                else:
+                    self.training_graph = fx.GraphModule(self.net, tracer.graph)
+                    break
 
     def layer_convert(self, net):
         leaves = self.module_leaves(net)
@@ -328,27 +343,27 @@ class Model(ModelModule):
     def m(self):
         return math.ceil(self.lambda_k / len(self.ids))
 
-    def build_examplars(self, dataloader, device):
-        imgs, ids, classes, features = [], [], [], []
+    def build_examplars(self, proto_loader, person_ids, device):
+        protos, ids, classes, features = [], [], [], []
         self.eval()
-        for data, person_id, classes_id in self.merge_loader(dataloader):
+        for data, person_id, classes_id in proto_loader:
             data = data.to(device)
-            imgs.append(data.clone().detach().cpu())
+            protos.append(data.clone().detach().cpu())
             ids.append(person_id.clone().detach().cpu())
             classes.append(classes_id.clone().detach().cpu())
-            features.append(self.features_extractor(data).clone().detach().cpu())
+            features.append(self.training_graph(data)[1].clone().detach().cpu())
 
-        imgs = torch.cat(imgs).detach().numpy()
+        protos = torch.cat(protos).detach().numpy()
         ids = torch.cat(ids).detach().numpy()
         classes = torch.cat(classes).detach().numpy()
         features = torch.cat(features).detach().numpy()
 
         del_ids = []
         for idx, person_id in enumerate(ids):
-            if person_id not in dataloader.dataset.person_ids:
+            if len(person_ids) and person_id not in person_ids:
                 del_ids.append(idx)
 
-        imgs = np.delete(imgs, del_ids, axis=0)
+        protos = np.delete(protos, del_ids, axis=0)
         ids = np.delete(ids, del_ids, axis=0)
         classes = np.delete(classes, del_ids, axis=0)
         features = np.delete(features, del_ids, axis=0)
@@ -356,7 +371,7 @@ class Model(ModelModule):
         for person_idx in np.unique(ids):
             _ids = np.argwhere(ids == person_idx).squeeze(axis=1)
 
-            _imgs = imgs[_ids]
+            _protos = protos[_ids]
             _classes = classes[_ids]
             _features = features[_ids]
             _mean = sum(_features) / len(_features)
@@ -367,7 +382,7 @@ class Model(ModelModule):
                 p = _mean - (_features + np.sum(examplars_fea, axis=0)) / (i + 1)
                 p = np.linalg.norm(p, axis=1)
                 min_idx = np.argmin(p)
-                examplars.append((_imgs[min_idx], _classes[min_idx]))
+                examplars.append((_protos[min_idx], _classes[min_idx]))
                 examplars_fea.append(_features[min_idx])
 
             self.examplars[person_idx] = examplars
@@ -375,22 +390,6 @@ class Model(ModelModule):
     def reduce_examplars(self):
         for class_idx in self.examplars.keys():
             self.examplars[class_idx] = self.examplars[class_idx][:self.m]
-
-    def merge_loader(self, loader: DataLoader):
-        if len(self.examplars) == 0:
-            return loader
-        else:
-            dataset = ConcatDataset([ReIDImageDataset(source=self.examplars), loader.dataset])
-            return DataLoader(
-                dataset=dataset,
-                shuffle=True,
-                batch_size=loader.batch_size,
-                num_workers=loader.num_workers,
-                pin_memory=loader.pin_memory,
-                drop_last=len(dataset) % loader.batch_size == 1,
-                persistent_workers=loader.persistent_workers,
-                multiprocessing_context=loader.multiprocessing_context,
-            )
 
     @staticmethod
     def module_leaves(model: nn.Module) -> List:
@@ -549,6 +548,66 @@ class Operator(OperatorModule):
         params = [p for p in model.net.parameters() if p.requires_grad]
         self.optimizer.param_groups = [{'params': params, **optimizer_param_factory}]
 
+    @staticmethod
+    def generate_proto_loader(model, source_loader: DataLoader):
+        def _task_token_hook(layer, fea_in, fea_out):
+            layer.input_features.append(fea_in[0].cpu().detach().clone())
+
+        model.head_adaptive_layer.input_features = []
+        model.head_adaptive_layer.input_person_ids = []
+        model.head_adaptive_layer.input_classes = []
+
+        hook = model.head_adaptive_layer.register_forward_hook(_task_token_hook)
+
+        for data, person_id, classes_id in source_loader:
+            model.head_adaptive_layer.input_person_ids.append(person_id)
+            model.head_adaptive_layer.input_classes.append(classes_id)
+            model.forward(data.to(model.device))
+
+        model.head_adaptive_layer.input_features = torch.cat(model.head_adaptive_layer.input_features)
+        model.head_adaptive_layer.input_person_ids = torch.cat(model.head_adaptive_layer.input_person_ids)
+        model.head_adaptive_layer.input_classes = torch.cat(model.head_adaptive_layer.input_classes)
+
+        protos = {}
+        for prototype, person_id, classes_id in zip(
+                model.head_adaptive_layer.input_features,
+                model.head_adaptive_layer.input_person_ids,
+                model.head_adaptive_layer.input_classes
+        ):
+            prototype, person_id, classes_id = prototype.numpy(), int(person_id), int(classes_id)
+            if person_id not in protos.keys():
+                protos[person_id] = []
+            protos[person_id].append((prototype, classes_id))
+
+        dataset = ConcatDataset([
+            ReIDImageDataset(source=model.examplars),
+            ReIDImageDataset(source=protos),
+        ])
+
+        dataloader = DataLoader(
+            dataset=dataset,
+            shuffle=True,
+            batch_size=source_loader.batch_size,
+            num_workers=source_loader.num_workers,
+            pin_memory=source_loader.pin_memory,
+            drop_last=len(dataset) % source_loader.batch_size == 1,
+            persistent_workers=source_loader.persistent_workers,
+            multiprocessing_context=source_loader.multiprocessing_context,
+        )
+
+        model.head_adaptive_layer.input_features = model.head_adaptive_layer.input_features.view(
+            model.head_adaptive_layer.input_features.shape[0], -1)
+
+        task_token = torch.mean(model.head_adaptive_layer.input_features, dim=0)
+
+        model.head_adaptive_layer.input_features = []
+        model.head_adaptive_layer.input_person_ids = []
+        model.head_adaptive_layer.input_classes = []
+
+        hook.remove()
+
+        return dataloader, task_token
+
     def invoke_train(
             self,
             model: Model,
@@ -561,17 +620,12 @@ class Operator(OperatorModule):
 
         model.train()
         self.set_optimizer_parameters(model)
+        dataloader, task_token = self.generate_proto_loader(model, dataloader)
 
-        def _task_token_hook(layer, fea_in, fea_out):
-            layer.input_features.append(fea_in[0].view(fea_in[0].shape[0], -1).cpu().detach().clone())
-
-        model.head_adaptive_layer.input_features = []
-        hook = model.head_adaptive_layer.register_forward_hook(_task_token_hook)
-
-        for data, person_id, classes_id in model.merge_loader(dataloader):
+        for data, person_id, classes_id in dataloader:
             data, target = data.to(device), classes_id.to(device)
             self.optimizer.zero_grad()
-            stu_output = self._invoke_train(model, data, target, **kwargs)
+            stu_output = self._invoke_train(model.training_graph, data, target, **kwargs)
             score, feature, loss = stu_output['score'], stu_output['feature'], stu_output['loss']
 
             # l1 loss to make adaptive weight sparse
@@ -591,17 +645,13 @@ class Operator(OperatorModule):
 
         train_acc = train_acc / data_cnt
         train_loss = train_loss / batch_cnt
-        model.head_adaptive_layer.input_features = torch.cat(model.head_adaptive_layer.input_features)
-        task_token = torch.mean(model.head_adaptive_layer.input_features, dim=0)
-
-        model.head_adaptive_layer.input_features = []
-        hook.remove()
 
         if self.scheduler:
             self.scheduler.step()
 
         return {
             'task_token': task_token,
+            'proto_loader': dataloader,
             'accuracy': train_acc,
             'loss': train_loss,
             'batch_count': batch_cnt,
@@ -894,7 +944,7 @@ class Client(ClientModule):
                 )
 
             self.model.reduce_examplars()
-            self.model.build_examplars(tr_loader, device)
+            self.model.build_examplars(output['proto_loader'], tr_loader.dataset.person_ids, device)
 
         # Reset learning rate
         self.operator.optimizer.state = collections.defaultdict(dict)
@@ -1018,7 +1068,8 @@ class Server(ServerModule):
         train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
 
         for cname, cstate in self.clients.items():
-            k, params = cstate['train_cnt'], {**cstate['incremental_sw'], **cstate['incremental_bn']}
+            # k, params = cstate['train_cnt'], {**cstate['incremental_sw'], **cstate['incremental_bn']}
+            k, params = cstate['train_cnt'], cstate['incremental_sw']
             params = {
                 n: (p.clone().detach() * k / train_total_cnt).type(dtype=p.dtype) \
                 for n, p in params.items()
@@ -1077,7 +1128,9 @@ class Server(ServerModule):
         for c_name, dis in zip(select_client, token_distance):
             self.logger.info(f'Relevant ratio between {client_name} and {c_name}: {dis:.4f}')
             client_state = self.clients[c_name]
-            params = {**client_state['incremental_sw'], **client_state['incremental_bn']}
+            # params = {**client_state['incremental_sw'], **client_state['incremental_bn']}
+            params = client_state['incremental_sw']
+
             params = {
                 n: (p.clone().detach() * dis).type(dtype=p.dtype) \
                 for n, p in params.items()
