@@ -229,8 +229,8 @@ class Model(ModelModule):
     _module_transform_lut = {
         nn.Linear: AdaptiveLayer,
         nn.Conv2d: AdaptiveConv2D,
-        nn.BatchNorm2d: AdaptiveBatchNorm,
-        nn.LayerNorm: AdaptiveLayerNorm,
+        # nn.BatchNorm2d: AdaptiveBatchNorm,
+        # nn.LayerNorm: AdaptiveLayerNorm,
     }
 
     def __init__(
@@ -308,27 +308,27 @@ class Model(ModelModule):
                     padding=module.padding,
                 )
 
-            if isinstance(module, nn.BatchNorm2d):
-                module = AdaptiveBatchNorm(
-                    global_weight=module.weight,
-                    adaptive_bias=module.bias,
-                    atten_default=self.atten_default,
-                    running_mean=module.running_mean,
-                    running_var=module.running_var,
-                    num_batches_tracked=module.num_batches_tracked,
-                    track_running_stats=module.track_running_stats,
-                    momentum=module.momentum,
-                    eps=module.eps,
-                )
+            # if isinstance(module, nn.BatchNorm2d):
+            #     module = AdaptiveBatchNorm(
+            #         global_weight=module.weight,
+            #         adaptive_bias=module.bias,
+            #         atten_default=self.atten_default,
+            #         running_mean=module.running_mean,
+            #         running_var=module.running_var,
+            #         num_batches_tracked=module.num_batches_tracked,
+            #         track_running_stats=module.track_running_stats,
+            #         momentum=module.momentum,
+            #         eps=module.eps,
+            #     )
 
-            if isinstance(module, nn.LayerNorm):
-                module = AdaptiveLayerNorm(
-                    global_weight=module.weight,
-                    adaptive_bias=module.bias,
-                    atten_default=self.atten_default,
-                    normalized_shape=module.normalized_shape,
-                    eps=module.eps,
-                )
+            # if isinstance(module, nn.LayerNorm):
+            #     module = AdaptiveLayerNorm(
+            #         global_weight=module.weight,
+            #         adaptive_bias=module.bias,
+            #         atten_default=self.atten_default,
+            #         normalized_shape=module.normalized_shape,
+            #         eps=module.eps,
+            #     )
 
             # replace module with adaptive layer
             pa_module = net
