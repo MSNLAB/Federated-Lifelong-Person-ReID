@@ -559,6 +559,7 @@ class Operator(OperatorModule):
 
         hook = model.head_adaptive_layer.register_forward_hook(_task_token_hook)
 
+        model.eval()
         for data, person_id, classes_id in source_loader:
             model.head_adaptive_layer.input_person_ids.append(person_id)
             model.head_adaptive_layer.input_classes.append(classes_id)
@@ -617,11 +618,10 @@ class Operator(OperatorModule):
         train_acc = train_loss = 0.0
         batch_cnt = data_cnt = 0
         device = model.device
+        dataloader, task_token = self.generate_proto_loader(model, dataloader)
 
         model.train()
         self.set_optimizer_parameters(model)
-        dataloader, task_token = self.generate_proto_loader(model, dataloader)
-
         for data, person_id, classes_id in dataloader:
             data, target = data.to(device), classes_id.to(device)
             self.optimizer.zero_grad()
