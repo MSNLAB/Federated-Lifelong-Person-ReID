@@ -66,7 +66,7 @@ class AdaptiveLayer(nn.Module):
             global_weight_atten = torch.ones(self.global_weight.data.shape[-1]) * self.atten_default
         self.global_weight_atten.data = global_weight_atten
         self.initial_global_weight_atten.data = global_weight_atten.clone().detach()
-        self.global_weight_atten.requires_grad = True
+        self.global_weight_atten.requires_grad = False
 
         if adaptive_weight is None:
             adaptive_weight = (1.0 - global_weight_atten.clone().detach()) \
@@ -623,7 +623,7 @@ class Operator(OperatorModule):
         model.train()
         self.set_optimizer_parameters(model)
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             self.optimizer.zero_grad()
             stu_output = self._invoke_train(model.training_graph, data, target, **kwargs)
             score, feature, loss = stu_output['score'], stu_output['feature'], stu_output['loss']
@@ -688,7 +688,7 @@ class Operator(OperatorModule):
 
         model.train()
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             with torch.no_grad():
                 output = self._invoke_predict(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']

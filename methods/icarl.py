@@ -1,3 +1,14 @@
+##############################################################################################
+# Code from: https://github.com/donlee90/icarl
+# @inproceedings{rebuffi2017icarl,
+#   title={icarl: Incremental classifier and representation learning},
+#   author={Rebuffi, Sylvestre-Alvise and Kolesnikov, Alexander and Sperl, and others},
+#   booktitle={Proceedings of the IEEE conference on Computer Vision and Pattern Recognition},
+#   pages={2001--2010},
+#   year={2017}
+# }
+##############################################################################################
+
 import collections
 import math
 from typing import Union, Dict, Any, List

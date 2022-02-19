@@ -114,7 +114,7 @@ class Operator(OperatorModule):
 
         model.train()
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             self.optimizer.zero_grad()
             output = self._invoke_train(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -169,7 +169,7 @@ class Operator(OperatorModule):
 
         model.train()
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             with torch.no_grad():
                 output = self._invoke_predict(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']

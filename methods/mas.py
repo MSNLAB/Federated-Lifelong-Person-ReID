@@ -66,7 +66,7 @@ class Model(ModelModule):
             for task_name, recall_dataloader in self.recall_dataloaders.items():
                 for data, person_id, classes_id in recall_dataloader:
                     self.net.zero_grad()
-                    data, target = data.to(device), classes_id.to(device)
+                    data, target = data.to(device), person_id.to(device)
                     loss = self.operator._invoke_train(self, data, target)['loss']
                     loss.backward()
                     for n, p in self.params.items():
@@ -164,7 +164,7 @@ class Operator(OperatorModule):
 
         model.train()
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             self.optimizer.zero_grad()
             output = self._invoke_train(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
@@ -219,7 +219,7 @@ class Operator(OperatorModule):
 
         model.train()
         for data, person_id, classes_id in dataloader:
-            data, target = data.to(device), classes_id.to(device)
+            data, target = data.to(device), person_id.to(device)
             with torch.no_grad():
                 output = self._invoke_predict(model, data, target, **kwargs)
             score, loss = output['score'], output['loss']
