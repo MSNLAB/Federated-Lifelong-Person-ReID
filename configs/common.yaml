@@ -1,6 +1,6 @@
 datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/
-checkpoints_dir: ./ckpts/2022-2-22/
-logs_dir: ./logs/2022-2-22/
+checkpoints_dir: ./ckpts/2022-2-23/
+logs_dir: ./logs/2022-2-23/
 
 parallel: 3
 device:
@@ -17,7 +17,7 @@ defaults:
 
   model_opts:
     name: resnet18
-    num_classes: 2000
+    num_classes: 8000
     last_stride: 1
     neck: bnneck
     fine_tuning:
@@ -26,7 +26,7 @@ defaults:
 
   criterion_opts:
     name: cross_entropy
-    num_classes: 2000
+    num_classes: 8000
     epsilon: 0.1
 
   optimizer_opts:

@@ -3,7 +3,7 @@ exp_method: fedprox
 
 model_opts:
   name: resnet18
-  num_classes: 2000
+  num_classes: 8000
   last_stride: 1
   neck: bnneck
   lambda_l2: 0.01

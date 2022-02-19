@@ -3,12 +3,12 @@ exp_method: fedstil
 
 model_opts:
   name: resnet18
-  num_classes: 2000
+  num_classes: 8000
   last_stride: 1
   neck: bnneck
-  atten_default: 0.50
+  atten_default: 0.90
   lambda_l1: 1.0e-4
-  lambda_k: 8000
+  lambda_k: 12000
   fine_tuning:
     - base.layer4
     - classifier
