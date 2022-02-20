@@ -47,36 +47,16 @@ class DecomposedLayer(nn.Module):
     ):
         super(DecomposedLayer, self).__init__()
 
-        self.sw = Parameter(tensor_reverse_permute(shared_weight))
-        self.sw.requires_grad = False
+        self.sw = Parameter()
+        self.bias = Parameter() if bias is not None else None
+        self.mask = Parameter()
+        self.aw = Parameter()
+        self.aw_kb = Parameter()
+        self.atten = Parameter()
 
-        self.bias = None
-        if bias is not None:
-            self.bias = Parameter(tensor_reverse_permute(bias))
-            self.bias.requires_grad = True
-
-        if mask is None:
-            mask = torch.zeros(self.sw.shape[-1])
-        self.mask = Parameter(mask)
-        self.mask.requires_grad = True
-
-        if adaptive is None:
-            adaptive = self.sw.clone().detach()
-            adaptive = (1 - mask.data) * adaptive
-        self.aw = Parameter(adaptive)
-        self.aw.requires_grad = True
-
-        if knowledge_base is None:
-            knowledge_base = torch.zeros(
-                size=[shape for shape in self.sw.shape] + [kb_cnt]
-            )
-        self.aw_kb = Parameter(knowledge_base)
-        self.aw_kb.requires_grad = False
-
-        if atten is None:
-            atten = torch.ones([kb_cnt]) / (kb_cnt + 1)
-        self.atten = Parameter(atten)
-        self.atten.requires_grad = True
+        if kb_cnt is None:
+            kb_cnt = 5
+        self.kb_cnt = kb_cnt
 
         if lambda_l1 is None:
             lambda_l1 = 1e-3
@@ -85,6 +65,59 @@ class DecomposedLayer(nn.Module):
         if lambda_mask is None:
             lambda_mask = 0.0
         self.lambda_mask = lambda_mask
+
+        self.init_training_weights(
+            shared_weight,
+            bias,
+            mask,
+            adaptive,
+            knowledge_base,
+            atten
+        )
+
+    def init_training_weights(
+            self,
+            shared_weight=None,
+            bias=None,
+            mask=None,
+            adaptive=None,
+            knowledge_base=None,
+            atten=None,
+    ):
+        if shared_weight is None:
+            shared_weight = tensor_reverse_permute(self.sw.data)
+        self.sw.data = tensor_reverse_permute(shared_weight)
+        self.sw.requires_grad = False
+
+        self.bias = None
+        if bias is not None:
+            if self.bias is None:
+                self.bias = Parameter()
+            self.bias.data = tensor_reverse_permute(bias)
+            self.bias.requires_grad = True
+
+        if mask is None:
+            mask = torch.sigmoid(torch.zeros(self.sw.shape[-1]))
+        self.mask.data = mask
+        self.mask.requires_grad = True
+
+        if adaptive is None:
+            adaptive = self.sw.data.clone().detach()
+            adaptive = (1 - mask.data) * adaptive
+        self.aw.data = adaptive
+        self.aw.requires_grad = True
+
+        if knowledge_base is None:
+            knowledge_base = torch.zeros(
+                size=[shape for shape in self.sw.shape] + [self.kb_cnt]
+            )
+        self.aw_kb.data = knowledge_base
+        self.aw_kb.requires_grad = False
+
+        if atten is None:
+            atten = torch.zeros([self.kb_cnt])
+        self.atten.data = atten
+        self.atten.requires_grad = True
 
     @staticmethod
     def l1_pruning(weights: torch.Tensor, hyper_parameters: torch.Tensor):
@@ -293,31 +326,31 @@ class Model(ModelModule):
                     kb_cnt=self.kb_cnt
                 )
 
-            if isinstance(module, nn.BatchNorm2d):
-                module = DecomposedBatchNorm(
-                    shared_weight=module.weight,
-                    bias=module.bias,
-                    lambda_l1=self.lambda_l1,
-                    lambda_mask=self.lambda_mask,
-                    kb_cnt=self.kb_cnt,
-                    running_mean=module.running_mean,
-                    running_var=module.running_var,
-                    num_batches_tracked=module.num_batches_tracked,
-                    track_running_stats=module.track_running_stats,
-                    momentum=module.momentum,
-                    eps=module.eps,
-                )
-
-            if isinstance(module, nn.LayerNorm):
-                module = DecomposedBatchNorm(
-                    shared_weight=module.weight,
-                    bias=module.bias,
-                    lambda_l1=self.lambda_l1,
-                    lambda_mask=self.lambda_mask,
-                    kb_cnt=self.kb_cnt,
-                    normalized_shape=module.normalized_shape,
-                    eps=module.eps,
-                )
+            # if isinstance(module, nn.BatchNorm2d):
+            #     module = DecomposedBatchNorm(
+            #         shared_weight=module.weight,
+            #         bias=module.bias,
+            #         lambda_l1=self.lambda_l1,
+            #         lambda_mask=self.lambda_mask,
+            #         kb_cnt=self.kb_cnt,
+            #         running_mean=module.running_mean,
+            #         running_var=module.running_var,
+            #         num_batches_tracked=module.num_batches_tracked,
+            #         track_running_stats=module.track_running_stats,
+            #         momentum=module.momentum,
+            #         eps=module.eps,
+            #     )
+            #
+            # if isinstance(module, nn.LayerNorm):
+            #     module = DecomposedBatchNorm(
+            #         shared_weight=module.weight,
+            #         bias=module.bias,
+            #         lambda_l1=self.lambda_l1,
+            #         lambda_mask=self.lambda_mask,
+            #         kb_cnt=self.kb_cnt,
+            #         normalized_shape=module.normalized_shape,
+            #         eps=module.eps,
+            #     )
 
             # replace module with decomposed layer
             pa_module = net
@@ -756,7 +789,9 @@ class Client(ClientModule):
             for name, layer in incremental_decomposed_layers
         }
         incremental_global_weights = {
-            f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
+            f'{name}.sw': (layer.mask * layer.sw + layer.aw +
+                           torch.sum(layer.atten * layer.aw_kb, dim=-1, keepdim=False)
+                           ).clone().detach() \
             for name, layer in incremental_decomposed_layers
         }
         return {
@@ -773,7 +808,9 @@ class Client(ClientModule):
             for name, layer in integrated_decomposed_layers
         }
         integrated_global_weights = {
-            f'{name}.sw': (layer.mask * layer.sw).clone().detach() \
+            f'{name}.sw': (layer.mask * layer.sw + layer.aw +
+                           torch.sum(layer.atten * layer.aw_kb, dim=-1, keepdim=False)
+                           ).clone().detach() \
             for name, layer in integrated_decomposed_layers
         }
         return {
@@ -793,6 +830,8 @@ class Client(ClientModule):
         if self.current_task:
             self.load_model(self.current_task)
         self.update_model(model_params)
+        for _, module in self.model.decomposed_module_leaves():
+            module.aw.data = ((1.0 - module.mask.data) * module.sw.data).clone().detach()
         self.logger.info('Update model succeed by incremental state from server.')
 
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
@@ -806,6 +845,8 @@ class Client(ClientModule):
         if self.current_task:
             self.load_model(self.current_task)
         self.update_model(model_params)
+        for _, module in self.model.decomposed_module_leaves():
+            module.aw.data = ((1.0 - module.mask.data) * module.sw.data).clone().detach()
         self.logger.info('Update model succeed by integrated state from server.')
 
     def train(
