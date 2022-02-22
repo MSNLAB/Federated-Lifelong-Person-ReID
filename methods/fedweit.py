@@ -125,8 +125,8 @@ class DecomposedLayer(nn.Module):
         return weights * hard_threshold
 
     def forward(self, data: torch.Tensor) -> Any:
-        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
-        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        aw = self.aw if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
         theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
         bias = self.bias
         return F.linear(
@@ -159,8 +159,8 @@ class DecomposedConv2D(DecomposedLayer):
         self.padding = padding
 
     def forward(self, data: torch.Tensor) -> Any:
-        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
-        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        aw = self.aw if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
         theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
         bias = self.bias
         return F.conv2d(
@@ -220,8 +220,8 @@ class DecomposedBatchNorm(DecomposedLayer):
         else:
             bn_training = (self.running_mean is None) and (self.running_var is None)
 
-        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
-        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        aw = self.aw if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
         theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
         bias = self.bias
 
@@ -260,8 +260,8 @@ class DecomposedLayerNorm(DecomposedLayer):
         self.eps = eps
 
     def forward(self, data: torch.Tensor):
-        aw = self.aw  # if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
-        mask = self.mask  # if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
+        aw = self.aw if not self.training else self.l1_pruning(self.aw, self.lambda_l1)
+        mask = self.mask if not self.training else self.l1_pruning(self.mask, self.lambda_mask)
         theta = mask * self.sw + aw + torch.sum(self.atten * self.aw_kb, dim=-1, keepdim=False)
         bias = self.bias
         return F.layer_norm(data, self.normalized_shape, theta, bias, self.eps)
@@ -832,6 +832,7 @@ class Client(ClientModule):
         self.update_model(model_params)
         for _, module in self.model.decomposed_module_leaves():
             module.aw.data = ((1.0 - module.mask.data) * module.sw.data).clone().detach()
+            module.atten.data = torch.zeros_like(module.atten.data)
         self.logger.info('Update model succeed by incremental state from server.')
 
     def update_by_integrated_state(self, state: Dict, **kwargs) -> Any:
@@ -847,6 +848,7 @@ class Client(ClientModule):
         self.update_model(model_params)
         for _, module in self.model.decomposed_module_leaves():
             module.aw.data = ((1.0 - module.mask.data) * module.sw.data).clone().detach()
+            module.atten.data = torch.zeros_like(module.atten.data)
         self.logger.info('Update model succeed by integrated state from server.')
 
     def train(

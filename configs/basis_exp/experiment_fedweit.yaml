@@ -6,8 +6,8 @@ model_opts:
   num_classes: 8000
   last_stride: 1
   neck: bnneck
-  lambda_l1: 1.0e-8
-  lambda_l2: 1.0e-1
+  lambda_l1: 5.0e-6
+  lambda_l2: 1.0e-3
   lambda_mask: 0.0
   kb_cnt: 5
   fine_tuning:
