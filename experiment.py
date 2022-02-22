@@ -65,22 +65,22 @@ class VirtualContainer(object):
     def max_worker(self):
         return sum(self.devices.values())
 
-    def acquire_device(self):
+    def acquire_device(self, count=1):
         device = None
         self.lock.acquire()
         for dev, cnt in self.devices.items():
-            if cnt and device is None:
-                self.devices[dev] -= 1
+            if cnt > 0 and device is None:
+                self.devices[dev] -= count
                 device = dev
         self.lock.release()
         return device
 
-    def release_device(self, device):
+    def release_device(self, device, count=1):
         self.lock.acquire()
-        self.devices[device] += 1
+        self.devices[device] += count
         self.lock.release()
 
-    def possess_device(self):
+    def possess_device(self, count=1):
         class VirtualProcess(object):
 
             def __init__(self, container) -> None:
@@ -89,11 +89,11 @@ class VirtualContainer(object):
                 self.device = None
 
             def __enter__(self):
-                self.device = self.container.acquire_device()
+                self.device = self.container.acquire_device(count)
                 return self.device
 
             def __exit__(self, type, value, trace):
-                self.container.release_device(self.device)
+                self.container.release_device(self.device, count)
                 return
 
         return VirtualProcess(self)
@@ -266,7 +266,7 @@ class ExperimentStage(object):
     @staticmethod
     @clear_cache
     def _process_val(client, log, curr_round, container):
-        with container.possess_device() as device:
+        with container.possess_device(container.max_worker()) as device:
             try:
                 task_pipeline = client.task_pipeline
                 for tid in range(len(task_pipeline.task_list)):
