@@ -1105,24 +1105,25 @@ class Server(ServerModule):
             self.logger.info(f'Collect integrated state successfully from client {client_name}.')
 
     def get_dispatch_incremental_state(self, client_name: str) -> Dict:
-        task_token = self.clients[client_name]['task_token']
+        task_token = self.clients[client_name]['task_token'].unsqueeze(dim=0)
         select_client, token_distance = [], []
 
         for c_name, c_tokens in self.token_memory.items():
+            c_tokens = c_tokens[::-1 * self.distance_calculate_step]  # search token in reverse order
             if c_name != client_name:
                 dis = 1e-8
-                for decay_cnt, other_token in enumerate(c_tokens[::-1 * self.distance_calculate_step], 0):
-                    _dis = compute_euclidean_distance(task_token.unsqueeze(dim=0), other_token.unsqueeze(dim=0))
-                    dis += _dis / math.pow(self.distance_calculate_decay, decay_cnt)
+                for decay_cnt, other_token in enumerate(c_tokens):
+                    other_token = other_token.unsqueeze(dim=0)
+                    _dis = compute_euclidean_distance(task_token, other_token)  # euclidean distance between tasks
+                    dis += _dis / math.pow(self.distance_calculate_decay, decay_cnt)  # weaken far tasks distance
                 select_client.append(c_name)
-                token_distance.append(1.0 / dis)
+                token_distance.append(1.0 / dis)  # correlation is the inverse of distance
 
         select_client.append(client_name)
         token_distance.append(sum(token_distance) / len(token_distance))
 
-        token_distance = torch.nn.functional.normalize(torch.Tensor(token_distance), dim=0)
-        token_distance = torch.nn.functional.softmax(token_distance, dim=0)
-        token_distance = token_distance.tolist()
+        token_distance = torch.Tensor(token_distance)
+        token_distance = torch.nn.functional.softmax(token_distance, dim=0).tolist()
 
         merge_incremental_params = {}
         for c_name, dis in zip(select_client, token_distance):
