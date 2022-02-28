@@ -836,7 +836,7 @@ class Client(ClientModule):
     def save_model(self, model_name: str):
         model_dict = self.model.model_state()
         self.save_state(model_name, model_dict, True)
-        self.save_state(f'{model_name}_examplars', self.model.examplars)
+        self.save_state(f'{model_name}_examplars', self.model.examplars, True)
 
     def get_incremental_state(self, **kwargs) -> Dict:
         adaptive_layers = self.model.adaptive_module_leaves()
@@ -1086,7 +1086,7 @@ class Server(ServerModule):
             model_dict[n] = p.clone().detach()
         self.model.net.load_state_dict(model_dict)
 
-        self.save_state(f'{self.server_name}_tokens', self.token_memory)
+        self.save_state(f'{self.server_name}_tokens', self.token_memory, True)
 
     def set_client_incremental_state(self, client_name: str, client_state: Dict) -> None:
         if client_name not in self.clients.keys():
