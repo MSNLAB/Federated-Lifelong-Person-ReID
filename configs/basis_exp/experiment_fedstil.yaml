@@ -8,7 +8,7 @@ model_opts:
   neck: bnneck
   atten_default: 0.90
   lambda_l1: 1.0e-4
-  lambda_k: 12000
+  lambda_k: 18000
   fine_tuning:
     - base.layer4
     - classifier

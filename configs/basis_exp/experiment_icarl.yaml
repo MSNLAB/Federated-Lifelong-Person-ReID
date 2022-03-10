@@ -9,7 +9,7 @@ model_opts:
   num_classes: 10
   last_stride: 1
   neck: bnneck
-  k: 8000
+  k: 12000
   n_classes: 10
   examplar_batch_size: 64
   fine_tuning:

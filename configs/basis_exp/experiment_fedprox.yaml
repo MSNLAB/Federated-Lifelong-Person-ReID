@@ -6,7 +6,7 @@ model_opts:
   num_classes: 8000
   last_stride: 1
   neck: bnneck
-  lambda_l2: 0.01
+  lambda_l2: 1.0e-5
   fine_tuning:
     - base.layer4
     - classifier

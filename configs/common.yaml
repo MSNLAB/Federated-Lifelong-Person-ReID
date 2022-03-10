@@ -1,6 +1,6 @@
 datasets_dir: /home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/
-checkpoints_dir: ./ckpts/2022-2-23/
-logs_dir: ./logs/2022-2-23/
+checkpoints_dir: ./ckpts/2022-3-1/
+logs_dir: ./logs/2022-3-1/
 
 parallel: 3
 device:
