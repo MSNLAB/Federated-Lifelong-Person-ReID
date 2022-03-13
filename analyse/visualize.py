@@ -3,43 +3,34 @@ import numpy as np
 import torch
 import torchvision.transforms as transforms
 import yaml
-from pytorch_grad_cam import ScoreCAM
+from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
-from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
 from builder import parser_model
 
 samples = {
-    24: [
-        '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/DukeMTMC-reID/bounding_box_train/0024_c4_f0032417.jpg',
-        '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/DukeMTMC-reID/bounding_box_train/0024_c1_f0052855.jpg',
-        '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/DukeMTMC-reID/bounding_box_train/0040_c2_f0059190.jpg',
-        '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/DukeMTMC-reID/bounding_box_train/0096_c8_f0029666.jpg',
-        '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/DukeMTMC-reID/bounding_box_train/0146_c4_f0050488.jpg',
-    ]
-    # 180: [
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-0-0/train/180/0200_c5_f0091943.jpg',
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-2-0/train/180/0200_c1_f0089462.jpg',
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-3-0/train/180/0200_c2_f0089200.jpg',
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-4-0/train/180/0200_c6_f0067466.jpg',
-    # ],
-    # 128: [
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-0-0/train/128/2953_c5_f0066209.jpg',
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-1-0/train/128/2953_c4_f0037049.jpg',
-    #     '/home/zhanglei/projects/Awesome-ReID-for-FCL/datasets/preprocessed-shuffle-22/task-4-0/train/128/2953_c6_f0042312.jpg',
+    # 24: [
+    #     './DukeMTMC-reID/bounding_box_train/0024_c4_f0032417.jpg',
+    #     './DukeMTMC-reID/bounding_box_train/0024_c1_f0052855.jpg',
     # ]
 }
 
+# for home, dirs, files in os.walk(IMAGES_SOURCE):
+#     for filename in files:
+#         class_id = int(filename[START_INDEX:END_INDEX])
+#         if class_id not in samples.keys():
+#             samples[class_id] = []
+#         samples[class_id].append(os.path.join(home, filename))
+
 models = {
-    '../configs/basis_exp/experiment_fedstil.yaml': '../ckpts/2022-3-1/fedstil_k_9/client-0/fedstil_model.ckpt',
-    '../configs/basis_exp/experiment_mas.yaml': '../ckpts_bak/2022-3-1/mas/client-0/mas_model.ckpt',
-    '../configs/basis_exp/experiment_fedprox.yaml': '../ckpts_bak/2022-3-1/fedprox/client-0/fedprox_model.ckpt',
+    # '../configs/basis_exp/experiment_fedstil.yaml': '../ckpts_bak/2022-3-1/fedstil/client-0/fedstil_model.ckpt',
+    # '../configs/basis_exp/experiment_fedcurv.yaml': '../ckpts_bak/2022-3-1/fedcurv/client-0/fedcurv_model.ckpt',
+    # '../configs/basis_exp/experiment_fedweit.yaml': '../ckpts_bak/2022-3-1/fedweit/client-0/task-0-0.ckpt',
 }
 
-save_dir = '../logs/cam'
+save_dir = './cam/'
 
 if __name__ == '__main__':
-
     for method_config, model_ckpt in models.items():
         with open(method_config, 'r') as f:
             config = yaml.load(f, Loader=yaml.Loader)
@@ -49,7 +40,7 @@ if __name__ == '__main__':
         model.update_model(torch.load(model_ckpt))
 
         target_layers = [model.net.base.layer4[-1]]
-        cam = ScoreCAM(model=model, target_layers=target_layers, use_cuda=False)
+        cam = GradCAM(model=model, target_layers=target_layers, use_cuda=True)
 
         for class_id, sample_paths in samples.items():
             for img_id, img_path in enumerate(sample_paths):
@@ -57,7 +48,7 @@ if __name__ == '__main__':
                 rgb_img = np.float32(rgb_img) / 255
 
                 input_tensor = transforms.ToTensor()(rgb_img).unsqueeze(0)
-                target_category = [ClassifierOutputTarget(class_id)]
-                grayscale_cam = cam(input_tensor, target_category)[0, :]
+                grayscale_cam = cam(input_tensor, None)[0, :]
                 visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=False)
-                cv2.imwrite(f'{save_dir}/{method_name}_{class_id}_{img_id}.jpg', visualization)
+                cv2.imwrite(f'{save_dir}/{class_id}_{img_id}.jpg', np.uint8(255 * rgb_img[:, :, ::-1]))
+                cv2.imwrite(f'{save_dir}/{class_id}_{img_id}_{method_name}.jpg', visualization)
