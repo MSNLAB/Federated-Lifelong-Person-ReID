@@ -1,7 +1,7 @@
 import json
 
-color = ['b', 'g', 'c', 'm', 'r', 'y', 'k', 'w']
-line_style = ['-', '--', '-.', ':']
+color = ['indianred', 'mediumseagreen', 'darkorchid', 'burlywood', 'orange', 'cornflowerblue']
+line_style = ['-', '--', ':', '-.', '--', ':', '-.', '--', ':', '-.', ]
 marker = ['s', 'o', '^', 'P', '*', 'D', '|', 'v', 'x', '8']
 
 metrics = ['val_rank_1', 'val_rank_3', 'val_rank_5', 'val_map']
