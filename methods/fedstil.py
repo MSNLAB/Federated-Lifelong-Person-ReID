@@ -261,20 +261,27 @@ class Model(ModelModule):
             module_name = tracer.node_to_originating_module.get(node)
             if module_name:
                 module = self.net.get_submodule(module_name)
-                if isinstance(module, AdaptiveLayer):
-                    self.head_adaptive_layer = module
-                    self.head_adaptive_layer.input_features = []
-                    self.head_adaptive_layer.input_person_ids = []
-                    self.head_adaptive_layer.input_classes = []
+                flag = False
+                for sub_module in module.modules():
+                    if isinstance(sub_module, AdaptiveLayer):
+                        self.head_adaptive_layer = module
+                        self.head_adaptive_layer.input_features = []
+                        self.head_adaptive_layer.input_person_ids = []
+                        self.head_adaptive_layer.input_classes = []
+                        flag = True
+                if flag:
                     break
 
         # generate graph module of training part
         tracer = ModulePathTracer()
+        input_node = None
         for node in tracer.trace(self.net).nodes:
+            if input_node is None:
+                input_node = node
             module_name = tracer.node_to_originating_module.get(node)
             if module_name:
                 if self.net.get_submodule(module_name) != self.head_adaptive_layer:
-                    node.replace_all_uses_with(*node.all_input_nodes)
+                    node.replace_all_uses_with(replace_with=input_node)
                     tracer.graph.erase_node(node)
                 else:
                     self.training_graph = fx.GraphModule(self.net, tracer.graph)
