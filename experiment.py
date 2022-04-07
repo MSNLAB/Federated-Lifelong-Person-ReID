@@ -200,6 +200,7 @@ class ExperimentStage(object):
                 f'{curr_round}-{server.server_name}-{client.client_name}',
                 dispatch_state, True
             )
+            del dispatch_state
 
         # simulate training for each online client
         with ThreadPoolExecutor(self.container.max_worker()) as pool:
@@ -237,6 +238,7 @@ class ExperimentStage(object):
             )
             if incremental_state is not None:
                 server.set_client_incremental_state(client.client_name, incremental_state)
+            del incremental_state
 
         server.calculate()
 
