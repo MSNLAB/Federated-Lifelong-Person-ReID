@@ -9,6 +9,7 @@ import torch.nn as nn
 from torch import _assert
 from torch.hub import load_state_dict_from_url
 from torch.utils import checkpoint
+from torchvision import transforms as T
 
 from tools.winit import weights_init_kaiming, weights_init_classifier
 
@@ -665,6 +666,7 @@ class SwinTransformer_ReID(nn.Module):
         base_state_dict = load_state_dict_from_url(model_urls[model_name], progress=False)
         self.base.load_state_dict(base_state_dict['model'])
 
+        self.resize = T.Resize([224, 224])
         self.in_planes = self.base.head.in_features
         self.base.head = nn.Sequential()
 
@@ -681,6 +683,9 @@ class SwinTransformer_ReID(nn.Module):
             raise ValueError(f'Mismatched neck type for {neck}.')
 
     def forward(self, x):
+        if isinstance(x, torch.Tensor):
+            x = self.resize(x)
+
         global_feat = self.base.forward_features(x)
 
         if self.neck == 'bnneck':
