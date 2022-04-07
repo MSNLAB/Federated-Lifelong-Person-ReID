@@ -39,6 +39,9 @@ class AdaptiveLayer(nn.Module):
         self.adaptive_bias = Parameter() if adaptive_bias is not None else None
         self.atten_default = atten_default
 
+        self.initial_global_weight_atten = Parameter()
+        self.initial_adaptive_weight = Parameter()
+
         self.init_training_weights(
             global_weight.reshape(list(global_weight.shape) + [1]),
             global_weight_atten,
@@ -75,6 +78,12 @@ class AdaptiveLayer(nn.Module):
                 adaptive_bias = self.adaptive_bias.data
             self.register_parameter('adaptive_bias', Parameter(adaptive_bias))
             self.adaptive_bias.requires_grad = True
+
+        self.initial_global_weight_atten.data = self.global_weight_atten.clone().detach()
+        self.initial_global_weight_atten.requires_grad = False
+
+        self.initial_adaptive_weight.data = self.adaptive_weight.clone().detach()
+        self.initial_adaptive_weight.requires_grad = False
 
     def forward(self, data: torch.Tensor) -> Any:
         theta = torch.sum(self.global_weight_atten * self.global_weight, dim=-1, keepdim=False) \
@@ -264,11 +273,15 @@ class Model(ModelModule):
             module_name = tracer.node_to_originating_module.get(node)
             if module_name:
                 module = self.net.get_submodule(module_name)
-                if isinstance(module, AdaptiveLayer):
-                    self.head_adaptive_layer = module
-                    self.head_adaptive_layer.input_features = []
-                    self.head_adaptive_layer.input_person_ids = []
-                    self.head_adaptive_layer.input_classes = []
+                flag = False
+                for sub_module in module.modules():
+                    if isinstance(sub_module, AdaptiveLayer):
+                        self.head_adaptive_layer = module
+                        self.head_adaptive_layer.input_features = []
+                        self.head_adaptive_layer.input_person_ids = []
+                        self.head_adaptive_layer.input_classes = []
+                        flag = True
+                if flag:
                     break
 
         # generate training graph
@@ -277,11 +290,14 @@ class Model(ModelModule):
     def build_training_graph(self):
         self.train()
         tracer = ModulePathTracer()
+        input_node = None
         for node in tracer.trace(self.net).nodes:
+            if input_node is None:
+                input_node = node
             module_name = tracer.node_to_originating_module.get(node)
             if module_name:
                 if self.net.get_submodule(module_name) != self.head_adaptive_layer:
-                    node.replace_all_uses_with(*node.all_input_nodes)
+                    node.replace_all_uses_with(replace_with=input_node)
                     tracer.graph.erase_node(node)
                 else:
                     return fx.GraphModule(self.net, tracer.graph)
@@ -637,6 +653,14 @@ class Operator(OperatorModule):
             stu_output = self._invoke_train(model.training_graph, data, target, **kwargs)
             score, feature, loss = stu_output['score'], stu_output['feature'], stu_output['loss']
 
+            # l1 loss to make adaptive weight sparse
+            adaptive_layers = model.adaptive_module_leaves()
+            sparseness = 0.0
+            for name, module in adaptive_layers:
+                sparseness += torch.abs(module.initial_global_weight_atten - module.global_weight_atten).sum()
+                sparseness += torch.abs(module.initial_adaptive_weight - module.adaptive_weight).sum()
+            loss += sparseness * model.lambda_l1
+
             loss.backward(retain_graph=True)
             self.optimizer.step()
             train_acc += (torch.max(score, dim=1)[1] == target).sum().cpu().detach().item()
@@ -843,7 +867,10 @@ class Client(ClientModule):
         adaptive_layers = self.model.adaptive_module_leaves()
         model_state = self.model.model_state()
         incremental_shared_weights = {
-            f'{name}.global_weight': layer.adaptive_weight \
+            f'{name}.global_weight': torch.unsqueeze(
+                torch.sum(layer.global_weight_atten * layer.global_weight, dim=-1, keepdim=False) \
+                + torch.squeeze(layer.adaptive_weight, dim=-1),
+                dim=-1) \
             for name, layer in adaptive_layers
         }
         return {
@@ -857,7 +884,10 @@ class Client(ClientModule):
         adaptive_layers = self.model.adaptive_module_leaves()
         model_state = self.model.model_state()
         integrated_shared_weights = {
-            f'{name}.global_weight': layer.adaptive_weight \
+            f'{name}.global_weight': torch.unsqueeze(
+                torch.sum(layer.global_weight_atten * layer.global_weight, dim=-1, keepdim=False) \
+                + torch.squeeze(layer.adaptive_weight, dim=-1),
+                dim=-1) \
             for name, layer in adaptive_layers
         }
         return {
@@ -1068,7 +1098,6 @@ class Server(ServerModule):
 
     def calculate(self) -> Any:
         merge_incremental_params = {}
-        train_total_cnt = sum([client['train_cnt'] for _, client in self.clients.items()])
 
         for cname, cstate in self.clients.items():
             # k, params = cstate['train_cnt'], {**cstate['incremental_sw'], **cstate['incremental_bn']}
