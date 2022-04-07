@@ -1,26 +1,24 @@
-exp_name: fedstil-atten
-exp_method: fedstil-atten
+exp_name: fedweit-res18
+exp_method: fedweit
 
 model_opts:
   name: resnet18
   num_classes: 8000
   last_stride: 1
   neck: bnneck
-  atten_default: 0.00
-  lambda_l1: 1.0e-5
-  lambda_k: 18000
+  lambda_l1: 5.0e-6
+  lambda_l2: 1.0e-3
+  lambda_mask: 0.0
+  kb_cnt: 5
   fine_tuning:
     - base.layer4
     - classifier
 
 server:
   server_name: server
-  distance_calculate_step: 10
-  distance_calculate_decay: 0.8
 
 clients:
   - client_name: client-0
-    model_ckpt_name: fedstil_model
     tasks:
       - task-0-0
       - task-0-1
@@ -30,7 +28,6 @@ clients:
       - task-0-5
 
   - client_name: client-1
-    model_ckpt_name: fedstil_model
     tasks:
       - task-1-0
       - task-1-1
@@ -40,7 +37,6 @@ clients:
       - task-1-5
 
   - client_name: client-2
-    model_ckpt_name: fedstil_model
     tasks:
       - task-2-0
       - task-2-1
@@ -50,7 +46,6 @@ clients:
       - task-2-5
 
   - client_name: client-3
-    model_ckpt_name: fedstil_model
     tasks:
       - task-3-0
       - task-3-1
@@ -60,7 +55,6 @@ clients:
       - task-3-5
 
   - client_name: client-4
-    model_ckpt_name: fedstil_model
     tasks:
       - task-4-0
       - task-4-1

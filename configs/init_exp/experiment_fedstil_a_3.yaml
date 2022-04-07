@@ -1,13 +1,13 @@
-exp_name: fedstil-atten
-exp_method: fedstil-atten
+exp_name: fedstil_a_3
+exp_method: fedstil
 
 model_opts:
   name: resnet18
   num_classes: 8000
   last_stride: 1
   neck: bnneck
-  atten_default: 0.00
-  lambda_l1: 1.0e-5
+  atten_default: 0.30
+  lambda_l1: 1.0e-4
   lambda_k: 18000
   fine_tuning:
     - base.layer4
