@@ -1,15 +1,24 @@
--i https://mirrors.aliyun.com/pypi/simple/
+## Base URL of the Python Package Index.
+## This should point to a repository compliant with PEP 503 (the simple
+## repository API) or a local directory laid out in the same format.
+-i https://pypi.python.org/simple
+# -i https://pypi.tuna.tsinghua.edu.cn/simple/
 
--f https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html
+
+## If a URL or path to a html file, then parse for links to archive
+## such as sdist (.tar.gz) or wheel (.whl) files. If a local path or
+## file:// URL that's a directory, then look for archives in the directory
+## listing. Links to VCS project URLs are not supported.
+-f https://download.pytorch.org/whl/torch_stable.html
 # -f https://s3.amazonaws.com/pytorch/whl/torch_stable.html
-# -f https://download.pytorch.org/whl/torch_stable.html
+# -f https://mirror.sjtu.edu.cn/pytorch-wheels/torch_stable.html
 
-matplotlib==3.4.3
-opencv-python==4.5.4.58
-scipy==1.7.2
-pandas==1.3.4
-numpy==1.21.4
-torch==1.9.1+cu111
-torchvision==0.10.1+cu111
-wandb==0.12.6
+
+## All dependencies for installation
 PyYAML==6.0
+scipy==1.8.0
+pandas==1.4.2
+numpy==1.22.3
+matplotlib==3.5.1
+torch==1.11.0+cu113
+torchvision==0.12.0+cu113
