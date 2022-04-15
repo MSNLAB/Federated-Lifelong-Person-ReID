@@ -16,7 +16,7 @@ from modules.client import ClientModule
 from modules.model import ModelModule
 from modules.operator import OperatorModule
 from modules.server import ServerModule
-from tools.distance import compute_euclidean_distance
+from tools.distance import compute_cosine_distance, compute_kl_distance
 from tools.evaluate import calculate_similarity_distance, evaluate
 from tools.utils import model_on_device, ModulePathTracer
 
@@ -1125,13 +1125,20 @@ class Server(ServerModule):
                 dis = 1e-8
                 for decay_cnt, other_token in enumerate(c_tokens):
                     other_token = other_token.unsqueeze(dim=0)
-                    _dis = compute_euclidean_distance(task_token, other_token)  # euclidean distance between tasks
+                    _dis = compute_kl_distance(task_token, other_token)  # kl distance between tasks
+                    # _dis = compute_cosine_distance(task_token, other_token)  # cosine distance between tasks
+                    # _dis = compute_euclidean_distance(task_token, other_token)  # euclidean distance between tasks
                     dis += _dis / math.pow(self.distance_calculate_decay, decay_cnt)  # weaken far tasks distance
                 select_client.append(c_name)
-                token_distance.append(1.0 / dis)  # correlation is the inverse of distance
+                token_distance.append(1.0 / dis)  # correlation is the inverse of euclidean distance
+                # token_distance.append(1.0 - dis)  # correlation is the inverse of cosine distance
 
         select_client.append(client_name)
         token_distance.append(sum(token_distance) / len(token_distance))
+
+        total_distance = sum(token_distance)
+        for idx, dis in enumerate(token_distance):
+            token_distance[idx] = dis / total_distance
 
         token_distance = torch.Tensor(token_distance)
         token_distance = torch.nn.functional.softmax(token_distance, dim=0).tolist()
