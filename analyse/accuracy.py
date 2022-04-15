@@ -128,7 +128,7 @@ def plot_accuracy_for_many_jobs(
             marker_id = (marker_id + 1) % len(marker)
 
         plt.grid(alpha=0.3)
-        # plt.legend(loc='lower right')
+        plt.legend(loc='lower right')
         plt.title(f'{client_name}')
         plt.xlabel("Communication Round")
         plt.ylabel(metric_desc)
@@ -234,7 +234,7 @@ def plot_merged_accuracy_for_many_jobs(
     client_set = sorted(client_set)
     comm_set = sorted(comm_set)
 
-    plt.figure(figsize=(8, 4), dpi=300)
+    plt.figure(figsize=(9, 4), dpi=300)
     plt_metrics = [
         ('val_rank_1', 'Rank-1'),
         ('val_map', 'mAP')
@@ -273,7 +273,7 @@ def plot_merged_accuracy_for_many_jobs(
 
             print(job_name.lower(), '=', _y)
 
-            # _y = gaussian_filter1d(_y, sigma=0.1)
+            _y = gaussian_filter1d(_y, sigma=0.1)
 
             plt.plot(_x, _y, color=color[color_id], linestyle=line_style[line_id],
                      marker=marker[marker_id], label=job_name, linewidth=3)
@@ -289,61 +289,57 @@ def plot_merged_accuracy_for_many_jobs(
         plt.xlim((0, 60))
         plt.ylim((15, 70))
 
-    plt.legend(loc='lower right', ncol=1, fontsize=12)
+    plt.legend(loc='lower right', ncol=2, fontsize=12)
 
     plt.tight_layout()
     plt.savefig(f'{save_path_prefix}.pdf')
 
 
 if __name__ == '__main__':
-    logs_data = load_logs(r'D:\Ryan\Projects\EdgeAI_ReID\logs\2022-3-1\fedstil_k_10-2022-03-06-16-58.json')
-    save_path_prefix = r'D:\Ryan\Projects\EdgeAI_ReID\logs\2022-3-1\fedstil_k_10-2022-03-06-16-58'
-
     # accuracy_on_round(
-    #     logs=logs_data['data'],
+    #     logs=load_logs(r'RESULT_PATH'),
     #     rounds=60,
-    #     metric='val_map',
-    #     metric_desc='mAP',
+    #     metric='val_map',  # val_rank_1, val_rank_3, val_rank_5, val_rank_10, val_map
+    #     metric_desc='mAP',  # Rank-1, Rank-3, Rank-5, Rank-10, mAP
     # )
-
+    #
     # plot_accuracy_for_one_job(
-    #     logs=logs_data['data'],
-    #     save_path_prefix=save_path_prefix,
-    #     metric='val_map',
-    #     metric_desc='mAP',
+    #     logs=load_logs(r'RESULT_PATH'),
+    #     save_path_prefix=r'SAVE_PREFIX',
+    #     metric='val_map',  # val_rank_1, val_rank_3, val_rank_5, val_rank_10, val_map
+    #     metric_desc='mAP',  # Rank-1, Rank-3, Rank-5, Rank-10, mAP
     # )
-
+    #
     # plot_task_accuracy_for_many_jobs(
     #     jobs={
-    #         'FedSTIL (ours)': load_logs(r'../logs/2022-3-1/fedstil-2022-03-25-16-21.json')['data'],
-    #         'FedSTIL (w/o PR)': load_logs(r'../logs/2022-3-1/fedstil_k_1-2022-03-07-00-05.json')['data'],
-    #         'FedWeIT': load_logs(r'../logs/2022-3-1/fedweit-2022-03-25-01-11.json')['data'],
-    #         'FedCurv': load_logs(r'../logs/2022-3-1/fedcurv-2022-03-24-18-37.json')['data'],
-    #         'FedAvg': load_logs(r'../logs/2022-3-1/fedavg-2022-03-24-14-15.json')['data'],
-    #         'iCaRL': load_logs(r'../logs/2022-3-1/icarl-2022-03-24-03-04.json')['data'],
-    #         'EWC': load_logs(r'../logs/2022-3-1/ewc-2022-03-24-00-51.json')['data'],
+    #         'FedSTIL (ours)': load_logs(r'RESULT_PATH')['data'],
+    #         'FedWeIT': load_logs(r'RESULT_PATH')['data'],
+    #         'FedCurv': load_logs(r'RESULT_PATH')['data'],
+    #         'FedAvg': load_logs(r'RESULT_PATH')['data'],
+    #         'iCaRL': load_logs(r'RESULT_PATH')['data'],
+    #         'EWC': load_logs(r'RESULT_PATH')['data'],
     #     },
-    #     save_path_prefix=r'D:\Ryan\Projects\EdgeAI_ReID\logs\2022-3-1\accuracy_task',
+    #     save_path_prefix=r'SAVE_PREFIX',
     #     tasks={
     #         'Task-1': ['task-0-0', 'task-1-0', 'task-2-0', 'task-3-0', 'task-4-0'],
     #         'Task-3': ['task-0-2', 'task-1-2', 'task-2-2', 'task-3-2', 'task-4-2'],
     #         'Task-5': ['task-0-4', 'task-1-4', 'task-2-4', 'task-3-4', 'task-4-4'],
     #     },
     #     rounds=[10, 30, 50],
-    #     metric='val_map',
-    #     metric_desc='mAP',
+    #     metric='val_map',  # val_rank_1, val_rank_3, val_rank_5, val_rank_10, val_map
+    #     metric_desc='mAP',  # Rank-1, Rank-3, Rank-5, Rank-10, mAP
     # )
-
+    #
     # plot_merged_accuracy_for_many_jobs(
     #     jobs={
-    #         'FedSTIL (ours)': load_logs(r'../logs/2022-2-23/fedstil_k_7-2022-02-25-03-15.json')['data'],
-    #         'FedWeIT': load_logs(r'../logs/2022-2-23/fedweit-2022-02-22-22-24.json')['data'],
-    #         'FedCurv': load_logs(r'../logs/2022-2-23/fedcurv-2022-02-20-11-15.json')['data'],
-    #         'FedAvg': load_logs(r'../logs/2022-2-23/fedavg-2022-02-20-08-09.json')['data'],
-    #         # 'FedProx': load_logs(r'../logs/2022-3-1/fedprox-2022-03-02-08-10.json')['data'],
-    #         'iCaRL': load_logs(r'../logs/2022-2-22/icarl-2022-02-11-22-31.json')['data'],
-    #         'EWC': load_logs(r'../logs/2022-2-23/ewc-2022-02-20-00-15.json')['data'],
-    #         # 'MAS': load_logs(r'../logs/2022-3-1/mas-2022-03-01-23-27.json')['data'],
+    #         'FedSTIL (ours)': load_logs(r'RESULT_PATH')['data'],
+    #         'FedWeIT': load_logs(r'RESULT_PATH')['data'],
+    #         'FedCurv': load_logs(r'RESULT_PATH')['data'],
+    #         'FedAvg': load_logs(r'RESULT_PATH')['data'],
+    #         'iCaRL': load_logs(r'RESULT_PATH')['data'],
+    #         'EWC': load_logs(r'RESULT_PATH')['data'],
     #     },
-    #     save_path_prefix=r'D:\Ryan\Projects\EdgeAI_ReID\logs\2022-3-1\accuracy',
+    #     save_path_prefix=r'SAVE_PREFIX',
     # )
+
+    pass

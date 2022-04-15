@@ -28,3 +28,9 @@ def compute_cosine_distance(features, others):
     others = F.normalize(others, p=2, dim=1)
     dist_m = 1 - torch.mm(features, others.t())
     return dist_m
+
+
+def compute_kl_distance(feature, others):
+    feature = F.log_softmax(feature, dim=-1)
+    others = F.softmax(others, dim=-1)
+    return F.kl_div(feature, others, reduction='sum')

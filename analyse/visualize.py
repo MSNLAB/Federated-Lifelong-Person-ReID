@@ -23,9 +23,9 @@ samples = {
 #         samples[class_id].append(os.path.join(home, filename))
 
 models = {
-    # '../configs/basis_exp/experiment_fedstil.yaml': '../ckpts_bak/2022-3-1/fedstil/client-0/fedstil_model.ckpt',
-    # '../configs/basis_exp/experiment_fedcurv.yaml': '../ckpts_bak/2022-3-1/fedcurv/client-0/fedcurv_model.ckpt',
-    # '../configs/basis_exp/experiment_fedweit.yaml': '../ckpts_bak/2022-3-1/fedweit/client-0/task-0-0.ckpt',
+    # '../configs/basis_exp/experiment_fedstil.yaml': r'MODEL_CHECKPOINTS_PATH',
+    # '../configs/basis_exp/experiment_fedcurv.yaml': r'MODEL_CHECKPOINTS_PATH',
+    # '../configs/basis_exp/experiment_fedweit.yaml': r'MODEL_CHECKPOINTS_PATH',
 }
 
 save_dir = './cam/'

@@ -158,30 +158,30 @@ def plot_merged_forgetting_for_many_jobs(
 
 
 if __name__ == '__main__':
-    logs_data = load_logs(r'D:\Ryan\Projects\EdgeAI_ReID\logs\2022-3-1\icarl-2022-03-11-02-15.json')
-
     # forgetting_on_round(
-    #     logs=logs_data['data'],
+    #     logs=load_logs(r'RESULT_PATH'),
     #     rounds=60,
-    #     metric='val_map',
-    #     metric_desc='mAP',
+    #     metric='val_map',  # val_rank_1, val_rank_3, val_rank_5, val_rank_10, val_map
+    #     metric_desc='mAP',  # Rank-1, Rank-3, Rank-5, Rank-10, mAP
     # )
-
+    #
     # plot_merged_forgetting_for_many_jobs(
     #     jobs={
-    #         '0K': load_logs(r'../logs/2022-3-1/fedstil_k_0-2022-03-05-21-41.json')['data'],
-    #         '2K': load_logs(r'../logs/2022-3-1/fedstil_k_1-2022-03-07-00-05.json')['data'],
-    #         '4K': load_logs(r'../logs/2022-3-1/fedstil_k_2-2022-03-05-23-32.json')['data'],
-    #         '6K': load_logs(r'../logs/2022-3-1/fedstil_k_3-2022-03-07-04-20.json')['data'],
-    #         '8K': load_logs(r'../logs/2022-3-1/fedstil_k_4-2022-03-06-02-25.json')['data'],
-    #         '10K': load_logs(r'../logs/2022-3-1/fedstil_k_5-2022-03-07-09-21.json')['data'],
-    #         '12K': load_logs(r'../logs/2022-3-1/fedstil_k_6-2022-03-06-06-13.json')['data'],
-    #         '14K': load_logs(r'../logs/2022-3-1/fedstil_k_7-2022-03-07-15-09.json')['data'],
-    #         '16K': load_logs(r'../logs/2022-3-1/fedstil_k_8-2022-03-06-11-00.json')['data'],
-    #         '18K': load_logs(r'../logs/2022-3-1/fedstil_k_9-2022-03-07-21-51.json')['data'],
-    #         '20K': load_logs(r'../logs/2022-3-1/fedstil_k_10-2022-03-06-16-58.json')['data'],
+    #         '0K': load_logs(r'RESULT_PATH')['data'],
+    #         '2K': load_logs(r'RESULT_PATH')['data'],
+    #         '4K': load_logs(r'RESULT_PATH')['data'],
+    #         '6K': load_logs(r'RESULT_PATH')['data'],
+    #         '8K': load_logs(r'RESULT_PATH')['data'],
+    #         '10K': load_logs(r'RESULT_PATH')['data'],
+    #         '12K': load_logs(r'RESULT_PATH')['data'],
+    #         '14K': load_logs(r'RESULT_PATH')['data'],
+    #         '16K': load_logs(r'RESULT_PATH')['data'],
+    #         '18K': load_logs(r'RESULT_PATH')['data'],
+    #         '20K': load_logs(r'RESULT_PATH')['data'],
     #     },
-    #     save_path_prefix=r'D:\Ryan\Projects\EdgeAI_ReID\logs\2022-3-1\abc',
+    #     save_path_prefix=r'SAVE_PREFIX',
     #     metric='val_map',
     #     metric_desc='mAP-Forgetting',
     # )
+
+    pass
