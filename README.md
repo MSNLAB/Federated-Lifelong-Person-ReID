@@ -22,7 +22,7 @@ Alternatively, you can organize your own dataset for test, please follow the str
 
 3. If you have multiple GPUs, please configure in `./configs/common.json` 
 
-```json
+```yaml
 device:
   - cuda:0
   - cuda:1
