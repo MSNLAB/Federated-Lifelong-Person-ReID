@@ -108,6 +108,5 @@ venv.bak/
 
 # Temperature Dir
 ckpts/
-data/
-tmp/
+venv/
 logs/
