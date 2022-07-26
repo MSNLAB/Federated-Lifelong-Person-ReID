@@ -53,8 +53,6 @@ We also provide the analyze tools on the package `./analyse/`. Those tools may h
 
 ![accuracy](./docs/accuracy.png)
 
-<img src="./docs/visualization.png" alt="visualization" style="zoom:50%;" />
-
 ## Playground
 
 We have prepared various experiment settings for our given datasets, you can find them in `./configs/`. You can also set up your own experiment by following the format of given configurations.
