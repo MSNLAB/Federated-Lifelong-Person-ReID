@@ -1,10 +1,16 @@
-# Lifelong Person Re-identification Deployed in Real-life using Spatial-Temporal Federated Learning
+# Federated Lifelong Person Re-identification
 
-Data drift is a thorny challenge when deploying person re-identification (ReID) models into real-world devices, where the person data distribution is different from that of the training environment and keeps changing. To tackle the issue, we leverage both lifelong learning and federated learning techniques to continuously update ReID models deployed on many distributed edge clients. Unlike previous efforts, our solution, FedSTIL (federated spatial-temporal incremental learning), aims to mine spatial-temporal correlations among the data processed by edge devices. Specifically, the framework first periodically extracts general representations of drifted data and updates models on local edge devices. Then, the updated knowledge will be aggregated into a centralized parameter server, where the knowledge will be selectively and attentively distilled from spatial- and temporal-dimension with carefully designed mechanisms. Next, the more informative spatial-temporal knowledge will be sent back to local edge devices as a guide to further improve data representation for better performance with a lifelong learning method. Extensive experiments on a mixture of five real-world datasets demonstrate that our method outperforms others by nearly 4% in Rank-1 accuracy, while reducing communication cost by 62%. 
+This repository contains the Official PyTorch implementation for the Paper ["Spatial-Temporal Federated Learning for Lifelong Person Re-identification on Distributed Edges"](https://arxiv.org/abs/2207.11759) by [Lei Zhang](https://github.com/MagicDevilZhang/), [Guanyu Gao](https://github.com/GuanyuGao) and [Huaizheng Zhang](https://huaizhengzhang.github.io/).
 
-> Paper is under the review, the site will be announced soon.
 
-# Quick Start
+
+## Abstract
+
+Data drift is a thorny challenge when deploying person re-identification (ReID) models into real-world devices, where the data distribution is significantly different from that of the training environment and keeps changing. To tackle this issue, we propose a federated spatial-temporal incremental learning approach, named FedSTIL, which leverages both lifelong learning and federated learning to continuously optimize models deployed on many distributed edge clients. Unlike previous efforts, FedSTIL aims to mine spatial-temporal correlations among the knowledge learnt from different edge clients. Extensive experiments on a mixture of five real-world datasets demonstrate that our method outperforms others by nearly 4% in Rank-1 accuracy, while reducing communication cost by 62%.  
+
+
+
+## Quick Start
 
 1. Please install all dependencies from `requirements.txt` after creating your own python environment with `python >= 3.8.0`.
 
@@ -37,25 +43,86 @@ device:
 $ python3 main.py --experiments ./configs/basis_exp/experiment_fedstil.yaml
 ```
 
+
+
+## Results
+
+All clients and server will save the checkpoints of model parameters and communication content on the `./ckpts/`. The log files for each experiment is on the `./logs/`, which include experimental settings, and training & evaluation performances. 
+
+We also provide the analyze tools on the package `./analyse/`. Those tools may help you analyze the accuracy, forgetting, and visualization.
+
+![accuracy](./docs/accuracy.png)
+
+![visualization](./docs/visualization.png)
+
+## Playground
+
 We have prepared various experiment settings for our given datasets, you can find them in `./configs/`. You can also set up your own experiment by following the format of given configurations.
 
-# Results
+```yaml
+# Set your experiment name and the method for calling.
+# The available methods are recorded at './methods/__init__.py'.
+exp_name: 
+exp_method: 
 
-All clients and server will save the checkpoints of model parameters and communication content on the `./ckpts/`. The log files for each experiment is on the `./logs/`, which include experimental settings, and training & evaluation performances. We also provide the analyze tools on the package `./analyse/`. Those tools may help you analyze the accuracy, forgetting, and visualization.
+# Model configuration for experiement. 
+model_opts:
+  # The available models are prepared at './models/__init__.py'.
+  name: 
+  # Some of the initial hyper-parameters can be customed like:
+  ## num_classes: 8000
+  
+  # Determine layers of the model for trainining.
+  fine_tuning:
+  	# Layers for training, for instance:
+    ## - base.layer4
+    ## - classifier
 
-# Contributing
+# Server configuration for experiement. 
+server:
+  server_name: 
+  # Some of the hyper-parameters can be customed like:
+  ## distance_calculate_step: 10
+  ## distance_calculate_decay: 0.8
+
+# Configuration for all distributed clients. 
+clients:
+  # You can setup multi clients by following: 
+  - client_name: 
+  	# The task stream for sequential local continual learning, the task name should exists in './configs/common.yaml -> datasets_dir' directory.
+    tasks: # [task-0-0, task-0-1, ...]
+```
+
+Besides, you can also design your federated lifelong learning method by following the template `./methods/baseline.py`, and remember to add the method into `./methods/__init__.py`.
+
+
+
+## Contributing
 
 Pull requests are more than welcome! If you have any questions please feel free to contact us.
 
-E-mail:    [guanyugao@gmail.com](mailto:guanyugao@gmail.com); [gygao@njust.edu.cn](mailto:gygao@njust.edu.cn) 
+E-mail: guanyugao@gmail.com](mailto:guanyugao@gmail.com); [gygao@njust.edu.cn](mailto:gygao@njust.edu.cn) 
 
-# Citation
+
+
+## Citation
 
  If you use this for research, please cite. The example BibTeX entry will be given after paper review. 
 
-# License
+```bibtex
+@article{zhang2022flreid,
+   title = {Spatial-Temporal Federated Learning for Lifelong Person Re-identification on Distributed Edges},
+   author = {Lei Zhang and Guanyu Gao and Huaizheng Zhang},
+   journal={arXiv preprint arXiv:2207.11759},
+   year = {2022},
+}
+```
 
-Copyright 2022, MSNLAB, NUST SCE
+
+
+## License
+
+Copyright 2022, MSNLAB, NJUST SCE
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
