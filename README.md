@@ -99,7 +99,7 @@ Besides, you can also design your federated lifelong learning method by followin
 
 Pull requests are more than welcome! If you have any questions please feel free to contact us.
 
-E-mail: guanyugao@gmail.com](mailto:guanyugao@gmail.com); [gygao@njust.edu.cn](mailto:gygao@njust.edu.cn) 
+E-mail: [guanyugao@gmail.com](mailto:guanyugao@gmail.com); [gygao@njust.edu.cn](mailto:gygao@njust.edu.cn); [lei.zhang@njust.edu.cn](mailto:lei.zhang@njust.edu.cn)
 
 
 
