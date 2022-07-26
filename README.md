@@ -53,7 +53,7 @@ We also provide the analyze tools on the package `./analyse/`. Those tools may h
 
 ![accuracy](./docs/accuracy.png)
 
-![visualization](./docs/visualization.png)
+<img src="./docs/visualization.png" alt="visualization" style="zoom:50%;" />
 
 ## Playground
 
