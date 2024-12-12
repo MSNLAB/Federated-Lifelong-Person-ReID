@@ -98,11 +98,12 @@ Pull requests are more than welcome! If you have any questions please feel free 
 Our paper is available on [Arxiv](https://arxiv.org/abs/2207.11759) and [IEEE TCSVT](https://ieeexplore.ieee.org/document/10142016). If you use this for research, please cite.
 
 ```bibtex
-@article{zhang2022flreid,
-   title = {Spatial-Temporal Federated Learning for Lifelong Person Re-identification on Distributed Edges},
-   author = {Lei Zhang and Guanyu Gao and Huaizheng Zhang},
-   journal={arXiv preprint arXiv:2207.11759},
-   year = {2022},
+@article{zhang2023spatial,
+  title={Spatial-temporal federated learning for lifelong person re-identification on distributed edges},
+  author={Zhang, Lei and Gao, Guanyu and Zhang, Huaizheng},
+  journal={IEEE Transactions on Circuits and Systems for Video Technology},
+  year={2023},
+  publisher={IEEE}
 }
 ```
 
