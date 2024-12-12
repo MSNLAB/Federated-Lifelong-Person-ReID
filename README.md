@@ -2,13 +2,11 @@
 
 This repository contains the Official PyTorch implementation for the Paper ["Spatial-Temporal Federated Learning for Lifelong Person Re-identification on Distributed Edges"](https://arxiv.org/abs/2207.11759) by [Lei Zhang](https://github.com/MagicDevilZhang/), [Guanyu Gao](https://github.com/GuanyuGao) and [Huaizheng Zhang](https://huaizhengzhang.github.io/).
 
-
+- [2023.06.01] Our [paper](https://ieeexplore.ieee.org/document/10142016) is accepted to IEEE Transactions on Circuits and Systems for Video Technology.
 
 ## Abstract
 
 Data drift is a thorny challenge when deploying person re-identification (ReID) models into real-world devices, where the data distribution is significantly different from that of the training environment and keeps changing. To tackle this issue, we propose a federated spatial-temporal incremental learning approach, named FedSTIL, which leverages both lifelong learning and federated learning to continuously optimize models deployed on many distributed edge clients. Unlike previous efforts, FedSTIL aims to mine spatial-temporal correlations among the knowledge learnt from different edge clients. Extensive experiments on a mixture of five real-world datasets demonstrate that our method outperforms others by nearly 4% in Rank-1 accuracy, while reducing communication cost by 62%.  
-
-
 
 ## Quick Start
 
@@ -42,8 +40,6 @@ device:
 ```shell
 $ python3 main.py --experiments ./configs/basis_exp/experiment_fedstil.yaml
 ```
-
-
 
 ## Results
 
@@ -93,30 +89,23 @@ clients:
 
 Besides, you can also design your federated lifelong learning method by following the template `./methods/baseline.py`, and remember to add the method into `./methods/__init__.py`.
 
-
-
 ## Contributing
 
 Pull requests are more than welcome! If you have any questions please feel free to contact us.
 
-E-mail: [guanyugao@gmail.com](mailto:guanyugao@gmail.com); [gygao@njust.edu.cn](mailto:gygao@njust.edu.cn); [lei.zhang@njust.edu.cn](mailto:lei.zhang@njust.edu.cn)
-
-
-
 ## Citation
 
- If you use this for research, please cite. The example BibTeX entry will be given after paper review. 
+Our paper is available on [Arxiv](https://arxiv.org/abs/2207.11759) and [IEEE TCSVT](https://ieeexplore.ieee.org/document/10142016). If you use this for research, please cite.
 
 ```bibtex
-@article{zhang2022flreid,
-   title = {Spatial-Temporal Federated Learning for Lifelong Person Re-identification on Distributed Edges},
-   author = {Lei Zhang and Guanyu Gao and Huaizheng Zhang},
-   journal={arXiv preprint arXiv:2207.11759},
-   year = {2022},
+@article{zhang2023spatial,
+  title={Spatial-temporal federated learning for lifelong person re-identification on distributed edges},
+  author={Zhang, Lei and Gao, Guanyu and Zhang, Huaizheng},
+  journal={IEEE Transactions on Circuits and Systems for Video Technology},
+  year={2023},
+  publisher={IEEE}
 }
 ```
-
-
 
 ## License
 
